@@ -1,8 +1,8 @@
 
 const MindmeisterClient = require('./mindmeister/MindmeisterClient')
 // const ChatGPTClient = require('./chatgpt/ChatGPTClient')
-const MindmapManager = require('./chatin/MindmapManager')
-const HomePageManager = require('./chatin/HomePageManager')
+const MindmapManager = require('./chatinviz/MindmapManager')
+const HomePageManager = require('./chatinviz/HomePageManager')
 const Alerts = require('./utils/Alerts')
 const Locators = require('./mindmeister/wrapper/Locators')
 

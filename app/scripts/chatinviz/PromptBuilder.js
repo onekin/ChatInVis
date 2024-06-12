@@ -2,72 +2,9 @@ const ModelDefaultValues = require('./ModelDefaultValues')
 const ProcessQuestions = require('./ProcessQuestions')
 
 class PromptBuilder {
-  static getPromptForGPTNodes (that, question) {
-    let style = that._styles
-    let numberOfItems, description
-    let numberOfItemsElement = style.find((s) => { return s.name === 'Number of items' })
-    let descriptionElement = style.find((s) => { return s.name === 'Description' })
-    if (ModelDefaultValues.Description.initial === descriptionElement.value) {
-      description = ModelDefaultValues.Description.default
-    } else {
-      description = descriptionElement.value
-    }
-    if (ModelDefaultValues.NumberOfItems.initial === numberOfItemsElement.value) {
-      numberOfItems = ModelDefaultValues.NumberOfItems.default
-    } else {
-      numberOfItems = numberOfItemsElement.value
-    }
-    let prompt
-    const MindmapManager = require('./MindmapManager')
-    const problemStatementPromptRE = MindmapManager.createRegexpFromPrompt(ProcessQuestions.PROBLEM_STATEMENT)
-    const problemPromptRE = MindmapManager.createRegexpFromPrompt(ProcessQuestions.PROBLEM_ANALYSIS)
-    const relevancePromptRE = MindmapManager.createRegexpFromPrompt(ProcessQuestions.CONSEQUENCE_MAPPING)
-    if (problemPromptRE.test(question) || problemStatementPromptRE.test(question)) {
-      prompt = PromptBuilder.getPromptForGPTProblemNodes(question, numberOfItems, description)
-    } else if (relevancePromptRE.test(question)) {
-      prompt = PromptBuilder.getPromptForGPTRelevanceNodes(question, numberOfItems, description)
-    } else {
-      prompt = PromptBuilder.getPromptForGPTOpenQuestion(question, numberOfItems, description)
-    }
-    return prompt
-  }
-  static getPromptForGPTProblemNodes (question, numberOfItems, description) {
-    let prompt = question + 'Please provide ' + numberOfItems + ' items with descriptions that ' + description
-    prompt += ' You have to provide the response in JSON format including each item in an array. The format should be as follows:'
-    prompt += '{\n' + '"problem": ['
-    for (let i = 0; i < numberOfItems; i++) {
-      if (i === 0) {
-        prompt += '{"GPT_problem_name":"name for the problem in a problematic style",' +
-          '"description": "description of the problem that ' + description + '",' +
-          '}'
-      } else {
-        prompt += ',{"GPT_problem_name":"name for the problem in a problematic style",' +
-          '"description": "description of the problem that ' + description + '",' +
-          '}'
-      }
-    }
-    prompt += ',\n]\n' + '}'
-    return prompt
-  }
-  static getPromptForGPTRelevanceNodes (question, numberOfItems, description) {
-    let prompt = question + 'Please provide ' + numberOfItems + ' items with descriptions that ' + description
-    prompt += ' You have to provide the response in JSON format including each item in an array. The format should be as follows:'
-    prompt += '{\n' + '"relevance": ['
-    for (let i = 0; i < numberOfItems; i++) {
-      if (i === 0) {
-        prompt += '{"GPT_relevance_name":"name for the consequence in a problematic style",' +
-          '"description": "description of the relevance reason that ' + description + '",' +
-          '}'
-      } else {
-        prompt += ',{"GPT_relevance_name":"name for the consequence in a problematic style",' +
-          '"description": "description of the relevance reason that ' + description + '",' +
-          '}'
-      }
-    }
-    prompt += '\n]\n' + '}'
-    return prompt
-  }
-  static getPromptForGPTOpenQuestion (question, numberOfItems, description) {
+  static getPromptForLLMAnswers (that, question) {
+    let numberOfItems = 4
+    let description = ModelDefaultValues.Description.default
     let prompt = question + 'Please provide ' + numberOfItems + ' items with descriptions that ' + description
     prompt += ' You have to provide the response in JSON format including each item in an array. The format should be as follows:'
     prompt += '{\n' + '"items": ['
@@ -85,6 +22,7 @@ class PromptBuilder {
     prompt += '\n]\n' + '}'
     return prompt
   }
+
   // PROMPTS FOR GPT BASED QUESTION FOR ALTERNATIVE NODES
   static getPromptForGPTAlternativeNodes (that, question, chatGPTBasedAnswers) {
     let style = that._styles

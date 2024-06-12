@@ -15,6 +15,7 @@ const Problem = require('./model/Problem')
 const PromptStyles = require('./PromptStyles')
 const IconsMap = require('./IconsMap')
 const Utils = require('../utils/Utils')
+const CheckMapUtils = require('../utils/CheckMapUtils')
 const Locators = require('../mindmeister/wrapper/Locators')
 const ITEMS = '4'
 const _ = require('lodash')
@@ -22,13 +23,7 @@ const _ = require('lodash')
 class MindmapManager {
   constructor () {
     this._mapId = null
-    this._styles = null
-    this._variables = []
-    this._perceivedProblem = null
-    this._scopingAnalysis = null
     this._mindmapParser = null
-    this._problems = []
-    this.found = false
   }
 
   kudeatzaileakHasieratu (that) {
@@ -266,34 +261,23 @@ class MindmapManager {
       }, 100)
       return
     }
-    this.isChatinMap().then(() => {
+    this.isChatinVizMap(node).then(() => {
       Alerts.showLoadingWindow('Loading...')
       that._mapId = nodeId
-      // todo - this is just a workaround for the prototype
       setTimeout(() => {
         Alerts.closeLoadingWindow()
-        // this.addModeManager()
-        // this.initQuestionManager()
-        // this.initAnswerManager()
         that.initChangeManager()
       }, 5000)
-      this.kudeatzaileakHasieratu(that)
+      // this.kudeatzaileakHasieratu(that)
     })
   }
-  isChatinMap () {
-    // current implementation checks only the ui map (sync), but future implementations could require async checkings
+  isChatinVizMap (rootNode) {
+    // Save if it is a ChatinViz map
     return new Promise((resolve, reject) => {
-      let found = true
-      Object.keys(TemplateNodes).forEach((k) => {
-        let nodes = MindmapWrapper.getNodesByText(TemplateNodes[k])
-        if (nodes == null || nodes.length === 0) {
-          found = false
-        }
-      })
-      if (found) {
+      if (CheckMapUtils.nodeElementHasQuestionMark(rootNode) && CheckMapUtils.nodeElementHasRectangleShape(rootNode)) {
         resolve()
       } else {
-        Alerts.showErrorToast('This is not a Chatin map')
+        Alerts.showErrorToast('This is not a ChatinViz map')
         reject(new Error('Template nodes not found in the map'))
       }
     })
@@ -315,19 +299,16 @@ class MindmapManager {
         return mapNodes != null
       })
       if (newNodes) {
-        that.addAnswerClickManager()
         that.addQuestionClickManager()
-        that.addNewProblemAnalysisManager()
-        that.addSummarizeButtonHandler(rootNode)
+        // that.addAnswerClickManager()
+        // that.addNewProblemAnalysisManager()
+        // that.addSummarizeButtonHandler(rootNode)
       }
     })
     let config = { childList: true, subtree: true }
     obs.observe(parent, config)
     // obs.observe(document, config)
-    this.addAnswerClickManager()
     this.addQuestionClickManager()
-    this.addNewProblemAnalysisManager()
-    this.addSummarizeButtonHandler(rootNode)
   }
 
   createCauseMappingNode (currentNode) {
@@ -575,7 +556,10 @@ class MindmapManager {
    */
   addQuestionClickManager () {
     let that = this
-    let questionNodes = that.getQuestionNodes()
+    let questionNodes = MindmapWrapper.getNodesByIcon('question')
+    // let allCloudNodes = that.getCloudNodes(that)
+    // let questionNodes = allQuestionNodes.filter((n) => { return !CheckMapUtils.nodeElementHasCloudShape(n) })
+    // let systemNodes = allQuestionNodes.filter((n) => { return CheckMapUtils.nodeElementHasCloudShape(n) })
     questionNodes.forEach((n) => {
       let iconElement = n.getIconElement()
       if (iconElement == null || iconElement.classList.contains('chatin_question')) return
@@ -584,10 +568,11 @@ class MindmapManager {
       iconElement.addEventListener('click', (e) => {
         e.preventDefault()
         e.stopPropagation()
-        that.performQuestion(n)
+        that.performQuestionToLLM(n)
       })
     })
   }
+
   addNewProblemAnalysisManager () {
     let that = this
     let problemAnalysisNode = that.getProblemAnalysisNode()
@@ -617,44 +602,48 @@ class MindmapManager {
       })
     })
   }
-  getQuestionNodes () {
-    // let questionRegExp = /^(WHICH|HOW|WHY).+\?$/i
-    // let questionNodes = MindmapWrapper.getNodesByTextRegexp(questionRegExp)
-    // todo -> check node style and icon
-    // green nodes with tick (either disabled or enabled) icon
-    let questionNodesColor = Utils.hexToRgb(PromptStyles.QuestionPrompt.backgroundColor)
-    let questionNodes = MindmapWrapper.getNodesByRGBBackgroundColor(questionNodesColor)
-    questionNodes = questionNodes.filter((n) => { return n.emojiIcon != null && (n.emojiIcon === IconsMap['magnifier'].mindmeisterName.replace(/:/g, '') || n.emojiIcon === IconsMap['magnifier'].mindmeisterName.replace(/:/g, '')) })
-    return questionNodes
+
+  getCloudNodes (that) {
+    // Get position of cloud nodes
+    let dataIds = that.getCloudIds()
+    let cloudNodes = dataIds.map(id => MindmapWrapper.getNodeById(id)).filter(node => node !== null)
+    console.log(cloudNodes)
+    return cloudNodes
   }
-  getProblemAnalysisNode () {
-    let nodes = MindmapWrapper.getNodesByText((TemplateNodes.PROBLEM_ANALYSIS))
-    if (nodes == null || nodes.length === 0) return // todo
-    return nodes[0]
-  }
-  getStyle () {
-    let that = this
-    let style = that._styles
-    let numberOfItems, description
-    let numberOfItemsElement = style.find((s) => { return s.name === 'Number of items' })
-    let descriptionElement = style.find((s) => { return s.name === 'Description' })
-    if (ModelDefaultValues.Description.initial === descriptionElement.value) {
-      description = ModelDefaultValues.Description.default
+
+  getCloudIds () {
+    // Get position of cloud nodes
+    let svg = MindmapWrapper.findSVGWithSpecificStyleAndNoClass()
+    if (svg == null) {
+      return []
     } else {
-      description = descriptionElement.value
+      let cloudsContainer = Array.from(svg.children)
+      let cloudsCoordinates = cloudsContainer.filter(el => el.tagName.toLowerCase() === 'path')
+        .map(path => {
+          const d = path.getAttribute('d')
+          const match = /M\s*(-?\d+\.?\d*)\s*(-?\d+\.?\d*)/.exec(d)
+          if (match) {
+            return { x: parseFloat(match[1]), y: parseFloat(match[2]) }
+          }
+          return null
+        })
+        .filter(coords => coords !== null)
+      console.log(cloudsCoordinates)
+      // Find corresponding divs based on the cloud node positions and extract data-id attributes
+      let dataIds = cloudsCoordinates.map(node => {
+        const xTransform = node.x - 6
+        const yTransform = node.y - 6
+        const transformedDiv = document.querySelector(`div[style*="transform: translateX(${xTransform}px) translateY(${yTransform}px)"]`)
+        return transformedDiv ? transformedDiv.getAttribute('data-id') : null
+      }).filter(dataId => dataId !== null) // Filter out nulls if no matching div is found
+      return dataIds
     }
-    if (ModelDefaultValues.NumberOfItems.initial === numberOfItemsElement.value) {
-      numberOfItems = ModelDefaultValues.NumberOfItems.default
-    } else {
-      numberOfItems = numberOfItemsElement.value
-    }
-    return 'Please provide ' + numberOfItems + ' items with descriptions that ' + description
   }
 
   /**
    * Perform questions
    */
-  performQuestion (node) {
+  performQuestionToLLM (node) {
     Alerts.showLoadingWindow('Creating prompt...')
     let that = this
     this.parseMap().then(() => {
@@ -665,18 +654,9 @@ class MindmapManager {
       if (node.dataset) {
         questionNode = that._mindmapParser.getNodeById(node.dataset.id)
         nodeId = node.dataset.id
-      } else {
-        questionNode = that._mindmapParser.getNodeById(node.id)
-        nodeId = node.id
       }
-      let question = questionNode._info.title
-      let gptBasedNodes = questionNode.children.filter((c) => { return c._info.style === 'FFFFFF,100,0,0,2BD9D9,1,' })
-      let prompt
-      if (gptBasedNodes.length > 0) {
-        prompt = PromptBuilder.getPromptForGPTAlternativeNodes(this, question, gptBasedNodes)
-      } else {
-        prompt = PromptBuilder.getPromptForGPTNodes(this, question)
-      }
+      let question = questionNode._info.title.replaceAll('\n', ' ')
+      let prompt = PromptBuilder.getPromptForLLMAnswers(this, question)
       let title = null
       let note = ''
       const parent = that._mindmapParser.getNodeById(questionNode._info.parent)
@@ -772,6 +752,7 @@ class MindmapManager {
       })
     })
   }
+
   performPDFBasedQuestion (node, id, name) {
     Alerts.showLoadingWindow(`Creating prompt...`)
     let that = this

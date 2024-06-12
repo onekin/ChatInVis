@@ -6,7 +6,7 @@ const Utils = require('../utils/Utils')
 class HomePageManager {
   constructor () {
     this._templates = {
-      'chatin': 'resources/mindmapTemplates/RQScoping.mind'
+      'chatin': 'resources/mindmapTemplates/chatinViz.mind'
     }
     // nothing todo here
   }
@@ -54,14 +54,14 @@ class HomePageManager {
       let chatinTemplate = templateElementToClone.cloneNode(true)
       chatinTemplate.id = 'chatinTemplate'
       chatinTemplate.classList.add('chatinTemplate')
-      chatinTemplate.querySelector(Locators.MINDMAP_TEMPLATE_NAME).innerText = 'Chatin'
+      chatinTemplate.querySelector(Locators.MINDMAP_TEMPLATE_NAME).innerText = 'ChatinViz'
       let templateImage = chatinTemplate.querySelector('svg')
       let templateImageContainer = templateImage.parentNode
       templateImageContainer.removeChild(templateImage)
       let chatinTemplateImage = document.createElement('img')
       // todo --> move to css
       chatinTemplateImage.style.height = '44px'
-      chatinTemplateImage.src = chrome.runtime.getURL('images/arturo.png')
+      chatinTemplateImage.src = chrome.runtime.getURL('images/256.png')
       templateImageContainer.style.height = ''
       templateImageContainer.style.width = ''
       templateImageContainer.appendChild(chatinTemplateImage)

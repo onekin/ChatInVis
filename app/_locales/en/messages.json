@@ -1,14 +1,14 @@
 {
   "appName": {
-    "message": "Chatin",
+    "message": "ChatinViz",
     "description": "The name of the application"
   },
   "appShortName": {
-    "message": "Chatin",
+    "message": "ChatinViz",
     "description": "The short_name (maximum of 12 characters recommended) is a short version of the app's name."
   },
   "appDescription": {
-    "message": "This extension enables Design Science Research through Mindmeister.",
+    "message": "An extensions for the instantiation of a conceptual model of provenance analysis for describing user interaction with LLMs \n",
     "description": "The description of the application"
   },
   "browserActionTitle": {
