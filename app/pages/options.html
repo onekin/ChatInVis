@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  </script>
+  <title>Chatin options</title>
+  <link rel="stylesheet" type="text/css" href="../styles/options.css">
+  <link rel="stylesheet" type="text/css" href="../styles/bootstrap.min.css">
+</head>
+<body>
+<div class="jumbotron">
+  <div class="container">
+    <div class="row">
+      <div class="col-sm-6 col-md-2">
+        <img class="logo" src="../images/icon-128.png">
+      </div>
+      <div class="col-sm-6 col-md-10">
+        <h2 class="title">Chatin configuration</h2>
+      </div>
+    </div>
+    <br/>
+    <h3>Authorization request</h3>
+    Tick off to grant access to your account in the following platforms:
+    <br/><br/>
+    <div class="row">
+      <div class="col-sm-6 col-md-2">
+        <div class="thumbnail externalService disabled" id="mindmeisterEnable">
+          <img src="../images/mindmeister.png">
+          <div class="caption">
+            <input type="checkbox" id="mindmeisterEnableCheckbox"/><span class="serviceName">Mindmeister</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <br/>
+    <br/>
+    <h3>ChatGPT</h3>
+    <span>Please, choose the way to connect with ChatGPT:</span>
+    <div class="card">
+      <div class="card-header card-header bg-dark text-white">Large Language Model selection</div>
+      <div class="card-body">
+        <div class="form-check">
+          <label for="LLMDropdown">Select your Large Language Model</label>
+          <select class="form-control" id="LLMDropdown">
+            <option value="anthropic" selected="selected">Anthropic (Claude-2)</option>
+            <option value="openAI">OpenAI (GPT4-turbo)</option>
+            <option value="openAIBasic">OpenAI (GPT3.5)</option>
+          </select>
+        </div>
+        <br>
+        <div id="anthropic-ApiKeyContainer" class="APIKey-Configuration">
+          <label>Paste here your Anthropic API key:</label>
+          <input type="text" id="anthropic-APIKey"/>
+          <button id="anthropic-APIKeyValidationButton" class="APIKeyValidationButton">Save</button>
+        </div>
+        <div id="openAI-ApiKeyContainer" class="APIKey-Configuration">
+          <label>Paste here your OpenAI API Plus key:</label>
+          <input type="text" id="openAI-APIKey" />
+          <button id="openAI-APIKeyValidationButton" class="APIKeyValidationButton">Save</button>
+        </div>
+        <div id="openAIBasic-ApiKeyContainer" class="APIKey-Configuration">
+          <label>Paste here your OpenAI basic API key:</label>
+          <input type="text" id="openAIBasic-APIKey" />
+          <button id="openAIBasic-APIKeyValidationButton" class="APIKeyValidationButton">Save</button>
+        </div>
+      </div >
+    </div>
+    <br/>
+    <div class="card">
+      <div class="card-header card-header bg-dark text-white">Prompt parameters</div>
+      <div class="card-body">
+        <div class="form-check">
+          <label for="numberOfAuthorsParameterInput">What is the number of items in answer</label>
+          <input type="number" id="numberOfAuthorsParameterInput" min="2" max="10">
+          <button id="numberOfAuthorsParameterButton" >Save</button>
+          <label id="numberOfAuthorsParameterMessage"></label>
+        </div>
+        <br>
+      </div>
+    </div>
+  </div>
+   </div>
+</div>
+</script>
+<script src="../scripts/options.js">
+</script>
+</body>
+</html>
