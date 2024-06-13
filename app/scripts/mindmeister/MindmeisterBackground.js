@@ -344,6 +344,7 @@ class MindmeisterBackground {
           'height': 23,
           'width': 23,
           'source': 3,
+          'position': 3,
           'image_identifier': node.image.mindmeisterName
         }
       }

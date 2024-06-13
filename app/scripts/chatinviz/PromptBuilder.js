@@ -3,18 +3,18 @@ const ProcessQuestions = require('./ProcessQuestions')
 
 class PromptBuilder {
   static getPromptForLLMAnswers (that, question) {
-    let numberOfItems = 4
-    let description = ModelDefaultValues.Description.default
+    let numberOfItems = this.getNumberOfItems(that)
+    let description = this.getDescription(that)
     let prompt = question + 'Please provide ' + numberOfItems + ' items with descriptions that ' + description
     prompt += ' You have to provide the response in JSON format including each item in an array. The format should be as follows:'
     prompt += '{\n' + '"items": ['
     for (let i = 0; i < numberOfItems; i++) {
       if (i === 0) {
-        prompt += '{"GPT_item_name":"name for item in a problematic style",' +
+        prompt += '{"GPT_item_name":"label for the answer",' +
           '"description": "description of the item reason that ' + description + '",' +
           '}'
       } else {
-        prompt += ',{"GPT_item_name":"name for item in a problematic style",' +
+        prompt += ',{"GPT_item_name":"label for the answer",' +
           '"description": "description of the item reason that ' + description + '",' +
           '}'
       }
@@ -377,6 +377,68 @@ class PromptBuilder {
     prompt += 'Please, provide a narrative that ends up in the Research Question. You have to provide the response in JSON format including the narrative in a "answer" item. The format should be as follows:\n]'
     prompt += '{\n' + '"narrative": "The narrative of the research question in ' + numberOfLines + ' lines "\n' + '}\n'
     return prompt
+  }
+  static getPromptForModelSuggestedQuestion (that, answerNodeLabel, answerNodeNote, previousQuestionNodeLabel, firsQuestion, model) {
+    let numberOfItems = model.numberOfQuestions
+    let description = this.getDescription(that)
+    let prompt = 'Exploring this first question: ' + firsQuestion + ', I have later ask: ' + previousQuestionNodeLabel + '. The answer for this question was ' + answerNodeLabel + ' which means ' + answerNodeNote + '.\n'
+    prompt += ' You have to suggest me more ' + numberOfItems + ' following up QUESTIONS based on the ' + model.name + ' model in JSON format including each item in an array. The ' + model.name + ' is based on ' + model.description + '. Please suggest the questions in the following format:\n'
+    prompt += '{\n' + '"items": ['
+    for (let i = 0; i < numberOfItems; i++) {
+      if (i === 0) {
+        prompt += '{"GPT_item_name":"new suggested question",' +
+          '"description": "description of the item reason that ' + description + '",' +
+          '}'
+      } else {
+        prompt += ',{"GPT_item_name":"new suggested question",' +
+          '"description": "description of the question reason that ' + description + '",' +
+          '}'
+      }
+    }
+    prompt += '\n]\n' + '}'
+    return prompt
+  }
+  static getPromptForLLMSuggestedQuestions (that, answerNodeLabel, answerNodeNote, previousQuestionNodeLabel, firsQuestion) {
+    let numberOfItems = this.getNumberOfItems(that)
+    let description = this.getDescription(that)
+    let prompt = 'Exploring this first question: ' + firsQuestion + ', I have later ask: ' + previousQuestionNodeLabel + '. The answer for this question was ' + answerNodeLabel + ' which means ' + answerNodeNote + '.\n'
+    prompt += ' You have to suggest me more ' + numberOfItems + ' following up QUESTIONS in JSON format including each item in an array. The format should be as follows:'
+    prompt += '{\n' + '"items": ['
+    for (let i = 0; i < numberOfItems; i++) {
+      if (i === 0) {
+        prompt += '{"GPT_item_name":"new suggested question",' +
+          '"description": "description of the item reason that ' + description + '",' +
+          '}'
+      } else {
+        prompt += ',{"GPT_item_name":"new suggested question",' +
+          '"description": "description of the question reason that ' + description + '",' +
+          '}'
+      }
+    }
+    prompt += '\n]\n' + '}'
+    return prompt
+  }
+  static getNumberOfItems (that) {
+    let style = that._styles
+    let numberOfItems
+    let numberOfItemsElement = style.find((s) => { return s.name === 'Number of items' })
+    if (ModelDefaultValues.NumberOfItems.initial === numberOfItemsElement.value) {
+      numberOfItems = ModelDefaultValues.NumberOfItems.default
+    } else {
+      numberOfItems = numberOfItemsElement.value
+    }
+    return numberOfItems
+  }
+  static getDescription (that) {
+    let style = that._styles
+    let description
+    let descriptionElement = style.find((s) => { return s.name === 'Description' })
+    if (ModelDefaultValues.Description.initial === descriptionElement.value) {
+      description = ModelDefaultValues.Description.default
+    } else {
+      description = descriptionElement.value
+    }
+    return description
   }
 }
 

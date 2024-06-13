@@ -1,8 +1,9 @@
 
 const PromptStyles = {
-  QuestionPrompt: {'backgroundColor': '#FFD426', 'font_color': '#000000', 'bold': true, line_position: null},
-  // AnswerItem: {'backgroundColor': '#96DB0B', 'font_color': '#FFFFFF', 'bold': true, line_position: null},
-  AnswerItem: {'backgroundColor': '#00c000', 'font_color': '#FFFFFF', 'bold': true, line_position: null},
+  QuestionPrompt: {'backgroundColor': '#71776a', 'font_color': '#000000', 'bold': true, line_position: null},
+  UserQuestionItem: {'backgroundColor': '#ffffff', 'bold': null, 'font_color': '#000000', borderColor: '#3D474D', 'borderWidth': null, 'border_style': null, 'shape': 0, line_position: null},
+  SystemQuestionItem: {'backgroundColor': '#ffffff', 'bold': null, 'font_color': '#000000', borderColor: '#3D474D', 'borderWidth': null, 'border_style': null, 'shape': 2, line_position: null},
+  SystemAnswerItem: {'backgroundColor': '#71776a', 'font_color': '#FFFFFF', 'bold': true, line_position: null, 'shape': 2, borderColor: '#3D474D'},
   ProblemForConsequenceItem: {'backgroundColor': '#00c000', 'font_color': '#FFFFFF', 'fontStyle': 'italic', line_position: null},
   // AnswerItemPDFBased: {'backgroundColor': '#2BD9D9', 'font_color': '#FFFFFF', 'bold': true, line_position: null},
   AnswerItemPDFBased: {'backgroundColor': '#96DB0B', 'font_color': '#FFFFFF', 'bold': true, line_position: null},

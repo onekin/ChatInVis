@@ -70,15 +70,15 @@ class MindmapWrapper {
     for (const svg of svgs) {
       // Normalize style string for consistent comparison
       const svgStyle = svg.getAttribute('style').replace(/\s+/g, '')
-      const hasNoClass = svg.className.baseVal === ''; // Check if className is empty
+      const hasNoClass = svg.className.baseVal === '' // Check if className is empty
 
       if (svgStyle === specificStyle.replace(/\s+/g, '') && hasNoClass) {
         console.log('SVG with specific style and no class found:', svg)
-        return svg; // Return the SVG element if found
+        return svg // Return the SVG element if found
       }
     }
     console.log('No SVG with the specific style and no class was found.')
-    return null; // Return null if no SVG matches the specific criteria
+    return null // Return null if no SVG matches the specific criteria
   }
 
   static getNodesByShape (shape) {
