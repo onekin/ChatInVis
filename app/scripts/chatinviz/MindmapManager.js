@@ -301,6 +301,7 @@ class MindmapManager {
         return mapNodes != null
       })
       if (newNodes) {
+        this.addConfigurationButton()
         that.addQuestionClickManager()
         that.addAnswerClickManager()
       }
@@ -308,10 +309,28 @@ class MindmapManager {
     let config = { childList: true, subtree: true }
     obs.observe(parent, config)
     // obs.observe(document, config)
+    this.addConfigurationButton()
     this.addQuestionClickManager()
     this.addAnswerClickManager()
   }
+  addConfigurationButton () {
+    let configurationButton = document.querySelector('.chatin-configuration-button')
+    if (configurationButton == null) {
+      let button = document.querySelector('.topRightToolbar-btnShare')
 
+      // Clone the button element
+      let clone = button.cloneNode(true)
+      clone.querySelector('.kr-text[data-test-id="icon-text-button-text"]').textContent = 'Question Configuration'
+      // Check if the button exists and has the expected text
+      clone.className = 'chatin-configuration-button'
+      clone.addEventListener('click', function (event) {
+        event.stopPropagation()
+        window.open(chrome.runtime.getURL('/pages/modelConfiguration.html'), '_blank')
+      })
+      // Insert the cloned button before the original button
+      button.parentNode.insertBefore(clone, button)
+    }
+  }
   createCauseMappingNode (currentNode) {
     let that = this
     that.parseMap().then((mapInfo) => {
@@ -1073,7 +1092,7 @@ class MindmapManager {
       if (iconElement == null || iconElement.classList.contains('chatin_answer')) return
       iconElement.classList.add('chatin_answer')
       iconElement.style.removeProperty('pointer-events')
-      iconElement.addEventListener('click', (e) => {
+      iconElement.addEventListener('click', async (e) => {
         e.preventDefault()
         e.stopPropagation()
         that.provideQuestions(n)
@@ -1084,8 +1103,7 @@ class MindmapManager {
     Alerts.showLoadingWindow(`Loading...`)
     // GPT Answers
     let that = this
-
-    that.parseMap().then(() => {
+    that.parseMap().then(async () => {
       let answerNode, nodeId
       if (node._domElement) {
         node = node._domElement
@@ -1104,45 +1122,53 @@ class MindmapManager {
         }
       }
       // PROMPT FOR RETRIEVING SUGGESTED QUESTIONS
-      let llmSuggestedQuestionsPrompt = PromptBuilder.getPromptForLLMSuggestedQuestions(this, answerNodeLabel, answerNodeNote, previousQuestionNodeLabel, that._firsQuestion)
-      let models = Config.models
-      const fromLLM = (that, nodeId, llmSuggestedQuestionsPrompt) => {
-        return that.retrieveLLMSuggestedQuestion(that, nodeId, llmSuggestedQuestionsPrompt)
-      }
-      const fromModel = (that, nodeId, model) => {
-        const modelSuggestedQuestionsPrompt = PromptBuilder.getPromptForModelSuggestedQuestion(this, answerNodeLabel, answerNodeNote, previousQuestionNodeLabel, that._firsQuestion, model)
-        return that.retrieveModelSuggestedQuestions(that, nodeId, modelSuggestedQuestionsPrompt, model.name)
-      }
-      // Create a promise for the LLM and for each model dynamically
-      const promises = [
-        fromLLM(that, nodeId, llmSuggestedQuestionsPrompt),
-        ...models.map(model => fromModel(that, nodeId, model))
-      ]
-      // Launch all methods separately and join the answers
-      Promise.all(promises).then(results => {
-        // Combine all results into one array
-        let newQuestionNodes = []
-        results.forEach(gptItemsNodes => {
-          newQuestionNodes = newQuestionNodes.concat(gptItemsNodes)
-        })
-        // ADD USER QUESTION
-        newQuestionNodes.push({
-          text: 'Type here a following up question about ' + answerNodeLabel + ' ...',
-          style: PromptStyles.UserQuestionItem,
-          image: IconsMap['question'],
-          parentId: nodeId,
-          note: '<b>Question from User</b>'
-        })
-        MindmeisterClient.doActions(that._mapId, newQuestionNodes).then((response) => {
-          if (response.error) {
-            Alerts.showErrorToast('There was an error adding the node to the map')
-          } else {
-            Alerts.closeLoadingWindow()
-          }
+      chrome.runtime.sendMessage({ scope: 'model', cmd: 'getModels' }, async ({ models }) => {
+        console.log(models)
+        const fromLLM = (that, nodeId) => {
+          const llmSuggestedQuestionsPrompt = PromptBuilder.getPromptForLLMSuggestedQuestions(this, answerNodeLabel, answerNodeNote, previousQuestionNodeLabel, that._firsQuestion)
+          return that.retrieveLLMSuggestedQuestion(that, nodeId, llmSuggestedQuestionsPrompt)
+        }
+        const fromModel = (that, nodeId, model) => {
+          const modelSuggestedQuestionsPrompt = PromptBuilder.getPromptForModelSuggestedQuestion(this, answerNodeLabel, answerNodeNote, previousQuestionNodeLabel, that._firsQuestion, model)
+          return that.retrieveModelSuggestedQuestions(that, nodeId, modelSuggestedQuestionsPrompt, model.name)
+        }
+        // Create a promise for the LLM and for each model dynamically
+        const promises = [
+          ...models.filter(model => model.selected).map(model => fromModel(that, nodeId, model))
+        ]
+        promises.push(fromLLM(that, nodeId))
+        // Launch all methods separately and join the answers
+        Promise.allSettled(promises).then(results => {
+          let newQuestionNodes = []
+          results.forEach((result, index) => {
+            console.log(`Promise ${index} status:`, result.status)
+            if (result.status === 'fulfilled') {
+              newQuestionNodes = newQuestionNodes.concat(result.value)
+              console.log('Fulfilled with value:', result.value)
+            } else {
+              console.error('Rejected with reason:', result.reason)
+            }
+          })
+          // ADD USER QUESTION
+          newQuestionNodes.push({
+            text: 'Type here a following up question about ' + answerNodeLabel + ' ...',
+            style: PromptStyles.UserQuestionItem,
+            image: IconsMap['question'],
+            parentId: nodeId,
+            note: '<b>Question from User</b>'
+          })
+          MindmeisterClient.doActions(that._mapId, newQuestionNodes).then((response) => {
+            if (response.error) {
+              Alerts.showErrorToast('There was an error adding the node to the map')
+            } else {
+              Alerts.closeLoadingWindow()
+            }
+          })
         })
       })
     })
   }
+
   addSiblingNode (that, node, type) {
     // let that = this
     let nodeId = node._info.parent
