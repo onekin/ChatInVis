@@ -34,6 +34,22 @@ class MindmapWrapper {
     return nodes
   }
 
+  static hasIcon (node, icon) {
+    let mindmapNode = new MindmapNode(node)
+    return mindmapNode.emojiIcon != null && (mindmapNode.emojiIcon === IconsMap[icon].mindmeisterName.replace(/:/g, ''))
+  }
+
+  static getTypeOfNode (node) {
+    let mindmapNode = new MindmapNode(node)
+    if (mindmapNode.emojiIcon != null && (mindmapNode.emojiIcon === IconsMap['question'].mindmeisterName.replace(/:/g, ''))) {
+      return 'question'
+    } else if (mindmapNode.emojiIcon != null && (mindmapNode.emojiIcon === IconsMap['magnifier'].mindmeisterName.replace(/:/g, ''))) {
+      return 'answer'
+    } else {
+      return 'unknown'
+    }
+  }
+
   static getNodesByTextRegexp (regexp) {
     let locator = Locators.MINDMAP_NODES
     let els = document.querySelectorAll(locator)

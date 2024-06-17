@@ -332,6 +332,18 @@ class MindmeisterBackground {
       }
       changeList.addChange(styleAction)
     }
+    if (node.attachment != null) {
+      let attachmentAction = {
+        'client_id': this.getCurrentChangeId(),
+        'entity': 'Attachment',
+        'idea_id': parseInt(nodeId),
+        'operation': 'Add',
+        'new_data': {
+          'attachment_id': node.attachment
+        }
+      }
+      changeList.addChange(attachmentAction)
+    }
     if (node.image != null) {
       let imageId = changeList.getImageId(node.image.mindmeisterName)
       let addImageAction = {

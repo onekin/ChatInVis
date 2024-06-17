@@ -3,7 +3,6 @@ const Config = require('../Config')
 const LLMTextUtils = require('../utils/LLMTextUtils')
 const LLMClient = require('../llm/LLMClient')
 const MindmapWrapper = require('../mindmeister/wrapper/MindmapWrapper')
-const TemplateNodes = require('./TemplateNodes')
 const MindmeisterClient = require('../mindmeister/MindmeisterClient')
 const Alerts = require('../utils/Alerts')
 const MindmapContentParser = require('../mindmeister/wrapper/MindmapContentParser')
@@ -16,235 +15,12 @@ const IconsMap = require('./IconsMap')
 const Utils = require('../utils/Utils')
 const CheckMapUtils = require('../utils/CheckMapUtils')
 const Locators = require('../mindmeister/wrapper/Locators')
-const ITEMS = '4'
-const _ = require('lodash')
+
 
 class MindmapManager {
   constructor () {
     this._mapId = null
     this._mindmapParser = null
-  }
-
-  kudeatzaileakHasieratu (that) {
-    const checkDOM = setInterval(function () {
-      // Options for the observer (which mutations to observe)
-      const config = { attributes: true, childList: true, subtree: true }
-      // Callback function to execute when mutations are observed
-      const callback = (mutationList, observer) => {
-        for (const mutation of mutationList) {
-          if (mutation.type === 'childList') {
-            mutation.removedNodes.forEach(node => {
-              if (node.classList && node.classList.contains('kr-view')) {
-                let style = node.style
-                if (style.position === 'absolute' && (style.transformOrigin === 'left center' || style.transformOrigin === 'center top')) {
-                  let title = document.querySelectorAll('.plusTitle')
-                  let title2 = document.querySelectorAll('.plusTitleOwn')
-                  if (title && title2) {
-                    Array.from(title).concat(Array.from(title2)).forEach((t) => {
-                      t.remove()
-                    })
-                  }
-                }
-              }
-            })
-            if (mutation.addedNodes) {
-              if (mutation.addedNodes.length > 0) {
-                const node = mutation.addedNodes[0]
-                if (node.innerText && (node.innerText.includes('Attachments') || node.innerText.includes('Archivos adjuntos'))) {
-                  let currentNode = that.getCurrentNode()
-                  if (!that.isAnswerNode(currentNode)) {
-                    that.manageAttachmentsMenu(that, node)
-                  }
-                } else if (node.innerHTML && node.innerHTML.includes(Locators.PDF_ELEMENT) && node.innerHTML.includes('.pdf')) {
-                  let divs = document.querySelectorAll('div.kr-view')
-                  let targetDiv = Array.from(divs).find(div => div.getAttribute('style').includes('padding-top: 10px; padding-bottom: 10px; width: 320px; background-color: rgb(255, 255, 255);'))
-                  let currentNode = that.getCurrentNode()
-                  if (!that.isAnswerNode(currentNode)) {
-                    that.manageAttachmentsMenu(that, targetDiv)
-                  }
-                } else if (node.innerText && (node.innerText.includes('Drag & drop files') || node.innerText.includes('Arrastra y suelta archivos o pega enlaces en los temas.'))) {
-                  that.manageContextMenu(that)
-                } else if (node.classList && node.classList.contains('kr-view')) {
-                  let style = node.style
-                  if (style.position === 'absolute' && style.transformOrigin === 'left center') {
-                    node.classList.add('addButton')
-                    let currentNode = that.getCurrentNode()
-                    let nodeTitle = currentNode.innerText
-                    that.parseMap().then(() => {
-                      let nodeObject = that._mindmapParser.getNodeById(currentNode.dataset.id)
-                      if (nodeObject && nodeObject._info) {
-                        if (that.isAnswerNode(currentNode) || nodeTitle === 'PROBLEM ANALYSIS') {
-                          let parent = that._mindmapParser.getNodeById(nodeObject._info.parent)
-                          if (parent._info.title.startsWith('WHICH') || that.isAddressProblemNode(currentNode)) {
-                            const h1Element = document.createElement('h2')
-                            h1Element.style.position = 'absolute'
-                            h1Element.style.top = `${parseInt(style.top, 10) - 24}px` // Subtract 30px from top
-                            h1Element.style.left = `${parseInt(style.left, 10) + 42}px`
-                            h1Element.textContent = 'more consequences'
-                            h1Element.style.color = 'rgb(0, 170, 255)'
-                            h1Element.className = 'plusTitle'
-                            node.insertAdjacentElement('afterend', h1Element)
-                            h1Element.addEventListener('click', (e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              that.onClickAnswer(currentNode)
-                            })
-                            // node.className = 'addCausesButton'
-                            node.addEventListener('click', (e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              that.onClickAnswer(currentNode)
-                            })
-                          } else {
-                            const h1Element = document.createElement('h2')
-                            h1Element.style.position = 'absolute'
-                            h1Element.style.top = `${parseInt(style.top, 10) - 24}px` // Subtract 30px from top
-                            h1Element.style.left = `${parseInt(style.left, 10) + 42}px`
-                            h1Element.textContent = 'more causes'
-                            h1Element.style.color = 'rgb(0, 170, 255)'
-                            h1Element.className = 'plusTitle'
-                            node.insertAdjacentElement('afterend', h1Element)
-                            h1Element.addEventListener('click', (e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              that.createCauseMappingNode(currentNode)
-                            })
-                            node.addEventListener('click', (e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              that.createCauseMappingNode(currentNode)
-                            })
-                          }
-                        } else if (that.isQuestionNode(currentNode)) {
-                          const h1Element = document.createElement('h2')
-                          h1Element.style.position = 'absolute'
-                          h1Element.style.top = `${parseInt(style.top, 10) - 24}px` // Subtract 30px from top
-                          h1Element.style.left = `${parseInt(style.left, 10) + 42}px`
-                          h1Element.textContent = 'ask question'
-                          h1Element.style.color = 'rgb(0, 170, 255)'
-                          h1Element.className = 'plusTitle'
-                          node.insertAdjacentElement('afterend', h1Element)
-                          h1Element.addEventListener('click', (e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            that.performQuestion(currentNode)
-                          })
-                          // node.className = 'addCausesButton'
-                          node.addEventListener('click', (e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            that.performQuestion(currentNode)
-                          })
-                        } else if (that.isGoodnessCriteriaNode(that, currentNode, nodeObject)) {
-                          const h1Element = document.createElement('h2')
-                          h1Element.style.position = 'absolute'
-                          h1Element.style.top = `${parseInt(style.top, 10) - 24}px` // Subtract 30px from top
-                          h1Element.style.left = `${parseInt(style.left, 10) + 42}px`
-                          h1Element.textContent = 'more...'
-                          h1Element.style.color = 'rgb(0, 170, 255)'
-                          h1Element.className = 'plusTitle'
-                          node.insertAdjacentElement('afterend', h1Element)
-                          h1Element.addEventListener('click', (e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            that.createGoodnessCriteriaQuestionNode(currentNode)
-                          })
-                          // node.className = 'addCausesButton'
-                          node.addEventListener('click', (e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            that.createGoodnessCriteriaQuestionNode(currentNode)
-                          })
-                        }
-                        that.addObserverToAddButton()
-                      }
-                    })
-                  } else if (style.position === 'absolute' && style.transformOrigin === 'center top') {
-                    let currentNode = that.getCurrentNode()
-                    node.classList.add('addOwnButton')
-                    that.parseMap().then(() => {
-                      let nodeObject = that._mindmapParser.getNodeById(currentNode.dataset.id)
-                      if (nodeObject && nodeObject._info) {
-                        if (that.isAnswerNode(currentNode)) {
-                          let parent = that._mindmapParser.getNodeById(nodeObject._info.parent)
-                          if (parent._info.title.startsWith('WHICH') || that.isAddressProblemNode(currentNode)) {
-                            const h1Element = document.createElement('h2')
-                            h1Element.style.position = 'absolute'
-                            h1Element.style.top = `${parseInt(style.top, 10) - 24}px` // Subtract 30px from top
-                            h1Element.style.left = `${parseInt(style.left, 10) + 42}px`
-                            // h1Element.textContent = 'add question'
-                            h1Element.style.color = 'rgb(0, 170, 255)'
-                            h1Element.className = 'plusTitleOwn'
-                            h1Element.innerText = 'add own consequence'
-                            node.insertAdjacentElement('afterend', h1Element)
-                            h1Element.addEventListener('click', (e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              that.addSiblingNode(that, nodeObject, 'consequenceNode')
-                            })
-                            node.addEventListener('click', (e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              that.addSiblingNode(that, nodeObject, 'consequenceNode')
-                            })
-                          } else {
-                            const h1Element = document.createElement('h2')
-                            h1Element.style.position = 'absolute'
-                            h1Element.style.top = `${parseInt(style.top, 10) - 24}px` // Subtract 30px from top
-                            h1Element.style.left = `${parseInt(style.left, 10) + 42}px`
-                            h1Element.textContent = 'add own cause'
-                            h1Element.style.color = 'rgb(0, 170, 255)'
-                            h1Element.className = 'plusTitleOwn'
-                            node.insertAdjacentElement('afterend', h1Element)
-                            h1Element.addEventListener('click', (e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              that.addSiblingNode(that, nodeObject, 'causeNode')
-                            })
-                            node.addEventListener('click', (e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                              that.addSiblingNode(that, nodeObject, 'causeNode')
-                            })
-                          }
-                        } else if (that.isQuestionNode(currentNode)) {
-                          let nodeObject = that._mindmapParser.getNodeById(currentNode.dataset.id)
-                          const h1Element = document.createElement('h2')
-                          h1Element.style.position = 'absolute'
-                          h1Element.style.top = `${parseInt(style.top, 10) - 24}px` // Subtract 30px from top
-                          h1Element.style.left = `${parseInt(style.left, 10) + 42}px`
-                          h1Element.textContent = 'add own question'
-                          h1Element.style.color = 'rgb(0, 170, 255)'
-                          h1Element.className = 'plusTitleOwn'
-                          node.insertAdjacentElement('afterend', h1Element)
-                          h1Element.addEventListener('click', (e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            that.addSiblingNode(that, nodeObject, 'questionNode')
-                          })
-                          node.addEventListener('click', (e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
-                            that.addSiblingNode(that, nodeObject, 'questionNode')
-                          })
-                        } else if (that.isGoodnessCriteriaNode(that, currentNode, nodeObject)) {
-                          //
-                        }
-                      }
-                    })
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-      // Create an observer instance linked to the callback function
-      const observer = new MutationObserver(callback)
-      // Start observing the target node for configured mutations
-      observer.observe(document.body, config)
-      clearInterval(checkDOM)
-    }, 1000)
   }
 
   init () {
@@ -263,7 +39,7 @@ class MindmapManager {
         Alerts.closeLoadingWindow()
         that.initChangeManager()
       }, 5000)
-      // this.kudeatzaileakHasieratu(that)
+      this.initManagers(that)
     })
   }
   getRootNode () {
@@ -331,143 +107,15 @@ class MindmapManager {
       button.parentNode.insertBefore(clone, button)
     }
   }
-  createCauseMappingNode (currentNode) {
-    let that = this
-    that.parseMap().then((mapInfo) => {
-      let scopingAnalysisNodes = this._mindmapParser.getNodesWithText(TemplateNodes.PROBLEM_ANALYSIS)
-      if (scopingAnalysisNodes == null || scopingAnalysisNodes.length === 0) return
-      let question = ProcessQuestions.PROBLEM_ANALYSIS
-      let items = MindmapManager.extractQuestionItems(question)
-      let variables = that._variables
-      let perceivedProblem
-      if (currentNode._domElement && currentNode._domElement.innerText === 'PROBLEM ANALYSIS') {
-        perceivedProblem = that._perceivedProblem
-      } else {
-        perceivedProblem = currentNode.innerText
-      }
-      items.forEach((i) => {
-        let v = variables.find((variable) => {
-          let variableName = variable.name.toLowerCase()
-          return variableName === i.toLowerCase()
-        })
-        if (v !== null && v !== undefined) {
-          question = question.replace(`<${i}>`, v.value)
-          _.remove(variables, v)
-        }
-      })
-      question = question.replace(`<Problem>`, perceivedProblem)
-      if (variables.length > 0) {
-        question = question.replace('?', ' ')
-        variables.forEach((v) => {
-          question = question + ' and assuming that ' + v.name + ' is ' + v.value
-        })
-        question = question + '?'
-      }
-      let missingItems = MindmapManager.extractQuestionItems(question)
-      if (missingItems.length > 0) {
-        Alerts.showErrorToast(`Missing variables: ${missingItems}`)
-      } else {
-        let parentId
-        if (currentNode.dataset) {
-          parentId = currentNode.dataset.id
-        } else if (currentNode._domElement) {
-          parentId = currentNode._domElement.dataset.id
-        } else {
-          parentId = currentNode.id
-        }
-        // let modeChanges = that.modeEnableChanges(that._processModes.find((m) => { return m.name === 'CAUSE_MAPPING' }))
-        MindmeisterClient.doActions(that._mapId, [{text: question, parentId: parentId, style: PromptStyles.QuestionPrompt, image: IconsMap.magnifier}]).then(() => {
-          // MindmeisterClient.doActions(that._mapId, [{text: question, parentId: parentId, style: PromptStyles.QuestionPrompt}]).then(() => {
-          let title = document.querySelectorAll('.plusTitle')
-          if (title) {
-            title.forEach((t) => {
-              t.remove()
-            })
-          }
-          let title2 = document.querySelectorAll('.plusTitleOwn')
-          if (title2) {
-            title2.forEach((t) => {
-              t.remove()
-            })
-          }
-          Alerts.closeLoadingWindow()
-        })
-      }
-    })
-  }
-  createGoodnessCriteriaQuestionNode (currentNode) {
-    let that = this
-    that.parseMap().then((mapInfo) => {
-      let question = ProcessQuestions.EXPERIMENTAL_QUESTION
-      let items = MindmapManager.extractQuestionItems(question)
-      let variables = that._variables
-      let perceivedProblem = that._perceivedProblem
-      let criteria = currentNode.innerText
-      items.forEach((i) => {
-        let v = variables.find((variable) => {
-          let variableName = variable.name.toLowerCase()
-          return variableName === i.toLowerCase()
-        })
-        if (v !== null && v !== undefined) {
-          question = question.replace(`<${i}>`, v.value)
-          _.remove(variables, v)
-        }
-      })
-      question = question.replace(`<Problem>`, perceivedProblem)
-      question = question.replace(`<Criteria>`, criteria)
-      let addressedProblem = that.getCurrentAddressedProblem()
-      if (addressedProblem._domElement) {
-        question = question.replace(`<AddressedProblem>`, addressedProblem._domElement.innerText.replaceAll('\n', ' '))
-      } else {
-        question = question.replace(`<AddressedProblem>`, 'a problem')
-      }
-      if (variables.length > 0) {
-        question = question.replace('?', ' ')
-        variables.forEach((v) => {
-          question = question + ' and assuming that ' + v.name + ' is ' + v.value
-        })
-        question = question + '?'
-      }
-      let missingItems = MindmapManager.extractQuestionItems(question)
-      if (missingItems.length > 0) {
-        Alerts.showErrorToast(`Missing variables: ${missingItems}`)
-      } else {
-        let parentId
-        if (currentNode.dataset) {
-          parentId = currentNode.dataset.id
-        } else if (currentNode._domElement) {
-          parentId = currentNode._domElement.dataset.id
-        } else {
-          parentId = currentNode.id
-        }
-        // let modeChanges = that.modeEnableChanges(that._processModes.find((m) => { return m.name === 'CAUSE_MAPPING' }))
-        MindmeisterClient.doActions(that._mapId, [{text: question, parentId: parentId, style: PromptStyles.QuestionPrompt, image: IconsMap.magnifier}]).then(() => {
-          // MindmeisterClient.doActions(that._mapId, [{text: question, parentId: parentId, style: PromptStyles.QuestionPrompt}]).then(() => {
-          let title = document.querySelectorAll('.plusTitle')
-          if (title) {
-            title.forEach((t) => {
-              t.remove()
-            })
-          }
-          let title2 = document.querySelectorAll('.plusTitleOwn')
-          if (title2) {
-            title2.forEach((t) => {
-              t.remove()
-            })
-          }
-          Alerts.closeLoadingWindow()
-        })
-      }
-    })
-  }
+
   /**
    *  Manage editor changes
    */
-  manageAttachmentsMenu (that, node) {
+  manageAttachmentsMenu (that, attachmentDiv, currentNode) {
     // Example usage
-    const classNames = Utils.extractNumbersFromClassNames(node.innerHTML)
+    const classNames = Utils.extractNumbersFromClassNames(attachmentDiv.innerHTML)
     if (classNames.length > 0) {
-      const window = node.querySelector('.knightrider-scrollview-scrollelement')
+      const window = attachmentDiv.querySelector('.knightrider-scrollview-scrollelement')
       const myDivs = window.querySelectorAll('div.kr-view.react-popover-trigger')
       let attachments = []
       Array.from(myDivs).forEach((div) => {
@@ -482,10 +130,10 @@ class MindmapManager {
           button.addEventListener('click', function (event) {
             // You can handle the click event here.
             event.stopPropagation()
-            let questionNodeID = that.getCurrentNodeId()
+            let questionNodeID = currentNode.getAttribute('data-id')
             let questionNode = MindmapWrapper.getNodeById(questionNodeID)
             if (id && name && questionNode) {
-              that.performPDFBasedQuestion(questionNode, id, name)
+              that.perform_DataSourcePDF_Question(questionNode, id, name)
             }
           })
           div.parentNode.appendChild(button)
@@ -497,77 +145,53 @@ class MindmapManager {
   manageContextMenu (that) {
     document.querySelectorAll('div').forEach(function (div) {
       const expectedStyle = 'width: 90px; margin-bottom: 10px; padding-top: 7px; padding-bottom: 7px; flex-direction: column; align-items: center; justify-content: center; border-radius: 10px; background-color: rgba(0, 0, 0, 0.05); cursor: pointer; transform: scaleX(1) scaleY(1);'
-      if ((div.textContent.includes('Task') || div.textContent.includes('Tarea')) && div.getAttribute('style') === expectedStyle) {
+      if ((div.textContent.includes('Icon') || div.textContent.includes('Icono')) && div.getAttribute('style') === expectedStyle) {
         let questionNode = that.getCurrentNode()
-        if (that.isQuestionNode(questionNode)) {
-          // Create a duplicate of the div
-          let aggregateButton = div.cloneNode(true)
-          // Optionally, you can change the content or attributes of the duplicate
-          aggregateButton.textContent = 'Compact'
-          aggregateButton.style = 'width: 100%; margin-bottom: 10px; padding-top: 7px; padding-bottom: 7px; flex-direction: column; align-items: center; justify-content: center; border-radius: 10px; background-color: rgba(0, 0, 0, 0.05); cursor: pointer; transform: scaleX(1) scaleY(1);'
-          // Insert the duplicate after the original div
-          div.parentNode.insertBefore(aggregateButton, aggregateButton.nextSibling)
-          aggregateButton.addEventListener('click', function (event) {
-            that.parseMap().then(() => {
-              let questionNodeObject = that._mindmapParser.getNodeById(questionNode.getAttribute('data-id'))
-              if (that.canBeAggregated(questionNodeObject)) {
-                Alerts.infoAlert({
-                  title: 'Compacting nodes',
-                  text: 'This operation will remove relevant information within the aggregated nodes. Do you want to continue?',
-                  showCancelButton: true,
-                  confirmButtonText: 'Yes',
-                  cancelButtonText: 'No',
-                  callback: () => {
-                    that.performAggregationQuestion(questionNodeObject)
-                  }
-                })
-              } else {
-                that.performAggregationQuestion(questionNodeObject)
-              }
-            })
-          })
-          let consensusButton = div.cloneNode(true)
-          // Optionally, you can change the content or attributes of the duplicate
-          consensusButton.textContent = 'Consensus'
-          consensusButton.style = 'width: 100%; margin-bottom: 10px; padding-top: 7px; padding-bottom: 7px; flex-direction: column; align-items: center; justify-content: center; border-radius: 10px; background-color: rgba(0, 0, 0, 0.05); cursor: pointer; transform: scaleX(1) scaleY(1);'
-          // Insert the duplicate after the original div
-          div.parentNode.insertBefore(consensusButton, div.nextSibling)
-          consensusButton.addEventListener('click', function (event) {
-            console.log('click on Consensus')
-            that.parseMap().then(() => {
-              let questionNodeObject = that._mindmapParser.getNodeById(questionNode.getAttribute('data-id'))
-              const nodeText = questionNodeObject._info.title.replaceAll('\n', ' ')
-              const encodedUri = encodeURIComponent(nodeText)
-              const uri = 'https://consensus.app/results/?q=' + encodedUri
-              window.open(uri)
-              console.log('click on Consensus')
-            })
-          })
-        } else {
-          if (that.isAnswerNode(questionNode)) {
-            let consensusButton = div.cloneNode(true)
-            // Optionally, you can change the content or attributes of the duplicate
-            consensusButton.textContent = 'Consensus'
-            consensusButton.style = 'width: 100%; margin-bottom: 10px; padding-top: 7px; padding-bottom: 7px; flex-direction: column; align-items: center; justify-content: center; border-radius: 10px; background-color: rgba(0, 0, 0, 0.05); cursor: pointer; transform: scaleX(1) scaleY(1);'
-            // Insert the duplicate after the original div
-            div.parentNode.insertBefore(consensusButton, div.nextSibling)
-            consensusButton.addEventListener('click', function (event) {
-              console.log('click on Consensus')
-              that.parseMap().then(() => {
-                let variables = that._variables
-                let practice = variables.find((v) => { return v.name === 'Practice' }).value
-                let activity = variables.find((v) => { return v.name === 'Activity' }).value
-                let questionNodeObject = that._mindmapParser.getNodeById(questionNode.getAttribute('data-id'))
-                const nodeText = questionNodeObject._info.title
-                const question = 'How can ' + nodeText + ' be lessened in ' + practice + ' to ' + activity + '?'
-                const encodedUri = encodeURIComponent(question)
-                const uri = 'https://consensus.app/results/?q=' + encodedUri
-                window.open(uri)
-                console.log('click on Consensus')
+        // ADD SUMMARIZE BUTTON
+        let aggregateButton = div.cloneNode(true)
+        // Optionally, you can change the content or attributes of the duplicate
+        aggregateButton.textContent = 'Summarize'
+        aggregateButton.style = 'width: 100%; margin-bottom: 10px; padding-top: 7px; padding-bottom: 7px; flex-direction: column; align-items: center; justify-content: center; border-radius: 10px; background-color: rgba(0, 0, 0, 0.05); cursor: pointer; transform: scaleX(1) scaleY(1);'
+        // Insert the duplicate after the original div
+        div.parentNode.insertBefore(aggregateButton, aggregateButton.nextSibling)
+        aggregateButton.addEventListener('click', function (event) {
+          that.parseMap().then(() => {
+            let questionNodeObject = that._mindmapParser.getNodeById(questionNode.getAttribute('data-id'))
+            let type = MindmapWrapper.getTypeOfNode(questionNode)
+            if (that.canBeAggregated(questionNodeObject)) {
+              Alerts.infoAlert({
+                title: 'Summarizing nodes',
+                text: 'This operation will remove relevant information within the aggregated nodes. Do you want to continue?',
+                showCancelButton: true,
+                confirmButtonText: 'Yes',
+                cancelButtonText: 'No',
+                callback: () => {
+                  that.performSummarizationQuestion(questionNodeObject, type)
+                }
               })
-            })
-          }
-        }
+            } else {
+              that.performSummarizationQuestion(questionNodeObject, type)
+            }
+          })
+        })
+        // ADD CONSENSUS BUTTON
+        let consensusButton = div.cloneNode(true)
+        // Optionally, you can change the content or attributes of the duplicate
+        consensusButton.textContent = 'Consensus'
+        consensusButton.style = 'width: 100%; margin-bottom: 10px; padding-top: 7px; padding-bottom: 7px; flex-direction: column; align-items: center; justify-content: center; border-radius: 10px; background-color: rgba(0, 0, 0, 0.05); cursor: pointer; transform: scaleX(1) scaleY(1);'
+        // Insert the duplicate after the original div
+        div.parentNode.insertBefore(consensusButton, div.nextSibling)
+        consensusButton.addEventListener('click', function (event) {
+          console.log('click on Consensus')
+          that.parseMap().then(() => {
+            let questionNodeObject = that._mindmapParser.getNodeById(questionNode.getAttribute('data-id'))
+            const nodeText = questionNodeObject._info.title
+            const encodedUri = encodeURIComponent(nodeText)
+            const uri = 'https://consensus.app/results/?q=' + encodedUri
+            window.open(uri)
+            console.log('click on Consensus')
+          })
+        })
       }
     })
   }
@@ -588,7 +212,7 @@ class MindmapManager {
       iconElement.addEventListener('click', (e) => {
         e.preventDefault()
         e.stopPropagation()
-        that.performQuestionToLLM(n)
+        that.perform_DataSourceLMM_Question(n)
       })
     })
   }
@@ -631,7 +255,8 @@ class MindmapManager {
   /**
    * Perform questions
    */
-  performQuestionToLLM (node) {
+  // eslint-disable-next-line camelcase
+  perform_DataSourceLMM_Question (node) {
     Alerts.showLoadingWindow('Creating prompt...')
     let that = this
     this.parseMap().then(() => {
@@ -645,17 +270,7 @@ class MindmapManager {
       }
       let question = questionNode._info.title.replaceAll('\n', ' ')
       let prompt = PromptBuilder.getPromptForLLMAnswers(this, question)
-      let title, note
-      if (questionNode._info.parent) {
-        const parent = that._mindmapParser.getNodeById(questionNode._info.parent)
-        if (parent._info.note) {
-          note = parent._info.note.replaceAll('\n', ' ')
-        }
-        title = parent._info.title.replaceAll('\n', ' ')
-        if (note !== '' || note !== null) {
-          prompt = title + ' means that ' + note + '\n Based on that,' + prompt
-        }
-      }
+      prompt = that.addPreviousNoteToPrompt(that, prompt, questionNode)
       console.log('prompt:\n ' + prompt)
       chrome.runtime.sendMessage({ scope: 'llm', cmd: 'getSelectedLLM' }, async ({ llm }) => {
         if (llm === '') {
@@ -709,23 +324,14 @@ class MindmapManager {
       })
     })
   }
-  performPDFBasedQuestion (node, id, name) {
+  // eslint-disable-next-line camelcase
+  perform_DataSourcePDF_Question (node, id, name) {
     Alerts.showLoadingWindow(`Creating prompt...`)
     let that = this
-    let chatGPTBasedAnswers = false
     this.parseMap().then(() => {
-      let prompt = PromptBuilder.getPromptForPDFBasedQuestion(this, node.text, chatGPTBasedAnswers)
-      let title = null
-      let note = null
+      let prompt = PromptBuilder.getPromptForPDFAnswers(this, node.text)
       let questionNode = that._mindmapParser.getNodeById(node.id)
-      if (!questionNode._info.title.startsWith('WHICH')) {
-        const parent = that._mindmapParser.getNodeById(questionNode._info.parent)
-        note = parent._info.note.replaceAll('\n', ' ')
-        title = parent._info.title.replaceAll('\n', ' ')
-      }
-      if (note !== null) {
-        prompt = title + ' means that ' + note + '\n Based on that,' + prompt
-      }
+      prompt = that.addPreviousNoteToPrompt(that, prompt, questionNode)
       console.log('prompt: ' + prompt)
       // Ensure workerSrc is set before loading the document
       // eslint-disable-next-line no-undef
@@ -760,70 +366,26 @@ class MindmapManager {
                   if (apiKey !== null && apiKey !== '') {
                     let callback = (json) => {
                       Alerts.closeLoadingWindow()
-                      const {
-                        gptItemsNodes,
-                        pdfBasedItemsNodes
-                      } = that.parseChatGPTAnswerFromJSON(json, chatGPTBasedAnswers)
-                      if ((gptItemsNodes === null || gptItemsNodes.length === 0) && pdfBasedItemsNodes.length === 0) {
+                      const answers = that.parseChatGPTAnswer(json, true)
+                      if (answers === null || answers.length === 0) {
                         Alerts.showErrorToast(`There was an error parsing ChatGPT's answer. Check browser console to see the whole answer.`)
                       }
-                      let nodes
                       // PDF Answers
-                      let otherProblemsNodes = pdfBasedItemsNodes.map((c) => {
+                      let nodes = answers.map((c) => {
                         return {
                           text: c.label,
-                          style: PromptStyles.AnswerItemPDFBased,
-                          image: IconsMap['tick-disabled'],
+                          style: PromptStyles.SystemAnswerItem,
+                          image: IconsMap['magnifier'],
                           parentId: node.id,
-                          note: c.description + '\n\n EXCERPT FROM ' + name + ':\n' + c.excerpt
+                          note: c.description + '\n\n <b>Source: ' + name + ':</b>\n' + c.excerpt,
+                          attachment: id
                         }
                       })
-                      if (chatGPTBasedAnswers) {
-                        // GPT Answers
-                        let gptProblemsNodes = gptItemsNodes.map((c) => {
-                          return {
-                            text: c.label,
-                            style: PromptStyles.UserAnswerItem,
-                            image: IconsMap['tick-disabled'],
-                            parentId: node.id,
-                            note: c.description
-                          }
-                        })
-                        nodes = otherProblemsNodes.concat(gptProblemsNodes)
-                      } else {
-                        nodes = otherProblemsNodes
-                      }
-                      if (questionNode._info.title.startsWith('WHICH')) {
-                        let narrative = that.getNarrative(that, questionNode)
-                        if (narrative.problem) {
-                          let problems = narrative.problem.split(';')
-                          problems.pop()
-                          let currentProblem = problems.pop().split(':')
-                          nodes.push({
-                            text: currentProblem[0],
-                            style: PromptStyles.UserAnswerItem,
-                            image: IconsMap['tick-disabled'],
-                            parentId: node.id,
-                            note: currentProblem[1]
-                          })
-                        }
-                      }
                       MindmeisterClient.addNodes(that._mapId, nodes).then((response) => {
                         if (response.error) {
                           Alerts.showAlertToast('There was an error adding the nodes to the map')
                         } else {
                           Alerts.closeLoadingWindow()
-                          if (title) {
-                            title.forEach((t) => {
-                              t.remove()
-                            })
-                          }
-                          let title2 = document.querySelectorAll('.plusTitleOwn')
-                          if (title2) {
-                            title2.forEach((t) => {
-                              t.remove()
-                            })
-                          }
                         }
                       })
                     }
@@ -857,7 +419,7 @@ class MindmapManager {
       Alerts.showErrorToast('Error parsing map: ' + error.message)
     })
   }
-  performAggregationQuestion (node) {
+  performSummarizationQuestion (node, type) {
     Alerts.showLoadingWindow('Creating prompt...')
     let that = this
     let prompt = ''
@@ -868,7 +430,17 @@ class MindmapManager {
           Alerts.showErrorToast('An error occurred')
         } else {
           if (childrenNodes.length > 0) {
-            prompt = PromptBuilder.getPromptForAggregation(node.text, childrenNodes, number)
+            let style, icon
+            if (type === 'answer') {
+              let answer = node.text + ' which means that ' + node._info.note.replace(/EXCERPT FROM[\s\S]*/, "")
+              prompt = PromptBuilder.getPromptForSummarizationQuestions(answer, childrenNodes, number)
+              style = PromptStyles.SystemQuestionItem
+              icon = IconsMap['question']
+            } else if (type === 'question') {
+              prompt = PromptBuilder.getPromptForSummarizationAnswers(node.text, childrenNodes, number)
+              style = PromptStyles.SystemAnswerItem
+              icon = IconsMap['abcd']
+            }
             console.log('prompt: ' + prompt)
             chrome.runtime.sendMessage({ scope: 'llm', cmd: 'getSelectedLLM' }, async ({ llm }) => {
               if (llm === '') {
@@ -889,8 +461,8 @@ class MindmapManager {
                     let gptProblemsNodes = gptItemsNodes.map((c) => {
                       return {
                         text: c.label,
-                        style: PromptStyles.AnswerItemAggregation,
-                        image: IconsMap['tick-disabled'],
+                        style: style,
+                        image: icon,
                         parentId: node.id,
                         note: c.description
                       }
@@ -954,7 +526,6 @@ class MindmapManager {
         chrome.runtime.sendMessage({ scope: 'llm', cmd: 'getAPIKEY', data: llm }, ({ apiKey }) => {
           if (apiKey !== null && apiKey !== '') {
             let callback = (json) => {
-              Alerts.closeLoadingWindow()
               let gptItemsNodes = that.parseChatGPTAnswer(json)
               if (gptItemsNodes === null || gptItemsNodes.length === 0) {
                 Alerts.showErrorToast(`There was an error parsing ChatGPT's answer. Check browser console to see the whole answer.`)
@@ -994,7 +565,6 @@ class MindmapManager {
         chrome.runtime.sendMessage({ scope: 'llm', cmd: 'getAPIKEY', data: llm }, ({ apiKey }) => {
           if (apiKey !== null && apiKey !== '') {
             let callback = (json) => {
-              Alerts.closeLoadingWindow()
               let gptItemsNodes = that.parseChatGPTAnswer(json)
               if (gptItemsNodes === null || gptItemsNodes.length === 0) {
                 Alerts.showErrorToast(`There was an error parsing ChatGPT's answer. Check browser console to see the whole answer.`)
@@ -1027,7 +597,7 @@ class MindmapManager {
   /**
    * Parse answers
    */
-  parseChatGPTAnswer (json) {
+  parseChatGPTAnswer (json, excerpts = false) {
     let gptItems
     gptItems = Array.from(Object.values(json)[0]).filter(item =>
       Object.keys(item).some(key => key.startsWith('GPT_'))
@@ -1035,7 +605,11 @@ class MindmapManager {
     let gptItemsNodes = []
     gptItems.forEach((item) => {
       let name = Utils.findValuesEndingWithName(item, 'name')
-      gptItemsNodes.push({ label: name, description: item.description })
+      if (excerpts) {
+        gptItemsNodes.push({label: name, excerpt: '<em>' + item.excerpt + '</em>', description: item.description})
+      } else {
+        gptItemsNodes.push({ label: name, description: item.description })
+      }
     })
     return gptItemsNodes
   }
@@ -1168,40 +742,6 @@ class MindmapManager {
       })
     })
   }
-
-  addSiblingNode (that, node, type) {
-    // let that = this
-    let nodeId = node._info.parent
-    if (type === 'questionNode') {
-      MindmeisterClient.doActions(that._mapId, [{text: '<add your question>', parentId: nodeId, style: PromptStyles.QuestionPrompt, image: IconsMap.magnifier}]).then((response) => {
-        if (response.error) {
-          Alerts.showErrorToast('There was an error adding the node to the map')
-        } else {
-          Alerts.closeLoadingWindow()
-        }
-      })
-    } else if (type === 'causeNode') {
-      MindmeisterClient.doActions(that._mapId,
-        [{text: '<add your cause>', parentId: nodeId, style: PromptStyles.UserAnswerItem, image: IconsMap['tick-disabled']}]
-      ).then((response) => {
-        if (response.error) {
-          Alerts.showErrorToast('There was an error adding the node to the map')
-        } else {
-          Alerts.closeLoadingWindow()
-        }
-      })
-    } else if (type === 'consequenceNode') {
-      MindmeisterClient.doActions(that._mapId,
-        [{text: '<add your consequence>', parentId: nodeId, style: PromptStyles.UserAnswerItem, image: IconsMap['tick-disabled']}]
-      ).then((response) => {
-        if (response.error) {
-          Alerts.showErrorToast('There was an error adding the node to the map')
-        } else {
-          Alerts.closeLoadingWindow()
-        }
-      })
-    }
-  }
   /**
    * Mind map parsing
    */
@@ -1215,8 +755,8 @@ class MindmapManager {
         this._styles = styles
         if (callback) callback()
       } else {
-        document.querySelector('#numberOfAuthorsParameterInput').value = ITEMS
-        styles.push({name: 'Number of items', value: ITEMS})
+        document.querySelector('#numberOfAuthorsParameterInput').value = 4
+        styles.push({name: 'Number of items', value: 4})
         styles.push({name: 'Description', value: 'provide rationales'})
         this._styles = styles
         if (callback) callback()
@@ -1278,46 +818,19 @@ class MindmapManager {
     let promptRegExp = new RegExp(questionPrompt, 'gi')
     return promptRegExp
   }
-  getCurrentNodeId () {
-    let elements = Array.from(document.querySelectorAll('div')).filter(el => {
-      let style = el.style
-      return style.width === '7px' &&
-        style.height === '7px' &&
-        style.position === 'absolute' &&
-        style.right === '-7px' &&
-        style.bottom === '-7px' &&
-        style.cursor === 'ew-resize' &&
-        style.pointerEvents === 'auto' &&
-        style.borderRadius === '100%' &&
-        style.backgroundColor === 'white' &&
-        style.boxSizing === 'content-box' &&
-        style.borderStyle === 'solid' &&
-        style.borderWidth === '2px' &&
-        style.borderColor === 'rgb(0, 170, 255)'
-    })
-    let originalElement = elements.length > 0 ? elements[0] : null
-    let transform = originalElement.parentElement.style.transform
-    // eslint-disable-next-line no-useless-escape
-    let match = /translateX\((\d+)px\)\s*translateY\((\-?\d+)px\)/.exec(transform)
-    let targetElement = null
-    if (match) {
-      let translateX = parseInt(match[1]) + 2
-      let translateY = parseInt(match[2]) + 2
-
-      // Step 2: Find Another Element with the Modified Values
-      let modifiedTransform = `translateX(${translateX}px) translateY(${translateY}px)`
-      targetElement = document.querySelector(`div[style*='${modifiedTransform}']`)
-
-      if (targetElement) {
-        console.log('Element found with modified transform values:', targetElement)
-        return targetElement.getAttribute('data-id')
-      } else {
-        console.log('No element found with the specified transform values.')
+  addPreviousNoteToPrompt (that, prompt, questionNode) {
+    let title, note
+    if (questionNode._info.parent) {
+      const parent = that._mindmapParser.getNodeById(questionNode._info.parent)
+      if (parent._info.note) {
+        note = parent._info.note.replaceAll('\n', ' ')
       }
-    } else {
-      console.log('Original element with specified transform values not found.')
+      title = parent._info.title.replaceAll('\n', ' ')
+      if (note !== '' || note !== null) {
+        prompt = title + ' means that ' + note + '\n Based on that,' + prompt
+      }
     }
-    return targetElement
+    return prompt
   }
   getCurrentNode () {
     let elements = Array.from(document.querySelectorAll('div')).filter(el => {
@@ -1339,7 +852,7 @@ class MindmapManager {
     let originalElement = elements.length > 0 ? elements[0] : null
     let transform = originalElement.parentElement.style.transform
     // eslint-disable-next-line no-useless-escape
-    let match = /translateX\((\d+)px\)\s*translateY\((\-?\d+)px\)/.exec(transform)
+    let match = /translateX\((\-?\d+)px\)\s*translateY\((\-?\d+)px\)/.exec(transform)
     let targetElement = null
     if (match) {
       let translateX = parseInt(match[1]) + 2
@@ -1360,52 +873,18 @@ class MindmapManager {
     }
     return targetElement
   }
-  isQuestionNode (questionNode) {
-    let questionRegExp = /^(WHICH|HOW|WHY).+\?$/i
-    let question = questionNode.innerText.replaceAll('\n', ' ')
-    if (questionRegExp.test(question)) {
-      return true
-    } else {
-      return false
-    }
-  }
-  isAnswerNode (questionNode) {
-    if (questionNode.style.backgroundColor === 'rgb(150, 219, 11)' || questionNode.style.backgroundColor === 'rgb(0, 192, 0)' || questionNode.style.backgroundColor === 'rgb(0, 128, 0)' || questionNode.style.backgroundColor === 'rgb(194, 24, 7)' || questionNode.style.backgroundColor === 'rgb(248, 230, 157)') {
-      return true
-    } else {
-      return false
-    }
-  }
-  isAddressProblemNode (questionNode) {
-    if (questionNode.style.backgroundColor === 'rgb(194, 24, 7)') {
-      return true
-    } else {
-      return false
-    }
-  }
-  isGoodnessCriteriaNode (that, questionNode, questionNodeObject) {
-    if (questionNode.style.backgroundColor === 'rgb(0, 170, 255)' && !that.isInContext(that, questionNodeObject)) {
-      return true
-    } else {
-      return false
-    }
-  }
-  isInContext (that, questionNode) {
-    let parent = that._mindmapParser.getNodeById(questionNode._info.parent)
-    while (parent !== null) {
-      if (parent._info.title === TemplateNodes.CONTEXT) {
-        return true
-      } else {
-        parent = that._mindmapParser.getNodeById(parent._info.parent)
-      }
-    }
-    return false
+  isAnswerNode (node) {
+    return MindmapWrapper.hasIcon(node, 'magnifier')
   }
   canBeAggregated (questionNode) {
     const hasChildWithChildren = questionNode.children.some((child) => {
       return child.children && child.children.length > 0
     })
     return hasChildWithChildren
+  }
+
+  isQuestionNode (node) {
+    return MindmapWrapper.hasIcon(node, 'question')
   }
 
   findIssue (text, nodeId) {
@@ -1416,25 +895,45 @@ class MindmapManager {
     }
     return null
   }
-  addObserverToAddButton () {
-    // Select the node that you want to observe
-    const targetNode = document.querySelector('.addButton')
-    // Options for the observer (which mutations to observe)
-    const config = { attributes: true, attributeOldValue: true }
-    // Callback function to execute when mutations are observed
-    const callback = function (mutationsList, observer) {
-      for (const mutation of mutationsList) {
-        if (mutation.type === 'attributes') {
-          if (mutation.attributeName === 'style') {
-            Utils.reloadLabels()
+
+  initManagers (that) {
+    const checkDOM = setInterval(function () {
+      // Options for the observer (which mutations to observe)
+      const config = { attributes: true, childList: true, subtree: true }
+      // Callback function to execute when mutations are observed
+      const callback = (mutationList, observer) => {
+        for (const mutation of mutationList) {
+          if (mutation.type === 'childList') {
+            if (mutation.addedNodes) {
+              if (mutation.addedNodes.length > 0) {
+                const node = mutation.addedNodes[0]
+                if (node.innerText && (node.innerText.includes('Attachments') || node.innerText.includes('Archivos adjuntos'))) {
+                  let currentNode = that.getCurrentNode()
+                  if (currentNode && that.isQuestionNode(currentNode)) {
+                    that.manageAttachmentsMenu(that, node, currentNode)
+                  }
+                } else if (node.innerHTML && node.innerHTML.includes(Locators.PDF_ELEMENT) && node.innerHTML.includes('.pdf')) {
+                  let divs = document.querySelectorAll('div.kr-view')
+                  let targetDiv = Array.from(divs).find(div => div.getAttribute('style').includes('padding-top: 10px; padding-bottom: 10px; width: 320px; background-color: rgb(255, 255, 255);'))
+                  let currentNode = that.getCurrentNode()
+                  if (currentNode && that.isQuestionNode(currentNode)) {
+                    that.manageAttachmentsMenu(that, targetDiv, currentNode)
+                  }
+                } else if (node.innerText && (node.innerText.includes('Drag & drop files') || node.innerText.includes('Arrastra y suelta archivos o pega enlaces en los temas.'))) {
+                  // Extend the context menu of nodes
+                  that.manageContextMenu(that)
+                }
+              }
+            }
           }
         }
       }
-    }
-    // Create an instance of MutationObserver
-    const observer = new MutationObserver(callback)
-    // Start observing the target node for configured mutations
-    observer.observe(targetNode, config)
+      // Create an observer instance linked to the callback function
+      const observer = new MutationObserver(callback)
+      // Start observing the target node for configured mutations
+      observer.observe(document.body, config)
+      clearInterval(checkDOM)
+    }, 1000)
   }
 }
 

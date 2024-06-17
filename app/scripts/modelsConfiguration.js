@@ -172,7 +172,7 @@ class ModelConfiguration {
             models.push(model)
             chrome.runtime.sendMessage({ scope: 'model', cmd: 'setModels', data: { models: models } }, (newModels) => {
               console.log('Model added:', model)
-              this.createModelList(models.models)
+              this.createModelList(models)
             })
           }
         })
