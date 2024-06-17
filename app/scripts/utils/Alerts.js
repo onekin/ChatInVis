@@ -201,7 +201,7 @@ class Alerts {
     showForm()
   }
 
-  static threeOptionsAlert ({ title = 'Input', html = '', preConfirm, preDeny, position = 'center', onBeforeOpen, showDenyButton = true, showCancelButton = true, confirmButtonText = 'Confirm', confirmButtonColor = '#4BB543', denyButtonText = 'Deny', denyButtonColor = '#3085D6', cancelButtonText = 'Cancel', allowOutsideClick = true, allowEscapeKey = true, callback, denyCallback, cancelCallback, customClass }) {
+  static threeOptionsAlert ({ title = 'Input', html = '', preConfirm, preDeny, position = 'center', onBeforeOpen, showDenyButton = true, showCancelButton = true, confirmButtonText = 'Confirm', confirmButtonColor = '#4BB543', denyButtonText = 'Deny', denyButtonColor = '#3085D6', cancelButtonText = 'Cancel', allowOutsideClick = true, allowEscapeKey = true, callback, denyCallback, cancelCallback, customClass, willOpen }) {
     Alerts.tryToLoadSwal()
     if (_.isNull(swal)) {
       if (_.isFunction(callback)) {
@@ -225,12 +225,7 @@ class Alerts {
         denyButtonText: denyButtonText,
         denyButtonColor: denyButtonColor,
         cancelButtonText: cancelButtonText,
-        willOpen: () => {
-          let element = document.querySelector('.swal2-popup')
-          element.style.width = '900px'
-          let description = document.querySelector('#description')
-          description.style.height = '400px'
-        }
+        willOpen: willOpen
       }).then((result) => {
         /* Read more about isConfirmed, isDenied below */
         if (result.isConfirmed) {

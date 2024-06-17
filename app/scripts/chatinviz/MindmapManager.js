@@ -49,6 +49,13 @@ class MindmapManager {
     let nodeId = m[2]
     return MindmapWrapper.getNodeById(nodeId)
   }
+  getRootNodeID () {
+    let urlRegexp = /https?:\/\/www\.mindmeister\.com\/(map|app\/map)\/(\d+)($|\/|\?|#)/
+    let m = window.location.href.match(urlRegexp)
+    if (m == null || m.length < 3) return
+    let nodeId = m[2]
+    return nodeId
+  }
   isChatinVizMap (rootNode) {
     // Save if it is a ChatinViz map
     return new Promise((resolve, reject) => {
@@ -80,6 +87,7 @@ class MindmapManager {
         this.addConfigurationButton()
         that.addQuestionClickManager()
         that.addAnswerClickManager()
+        that.addUserAnnotations(this._mapId)
       }
     })
     let config = { childList: true, subtree: true }
@@ -88,6 +96,7 @@ class MindmapManager {
     this.addConfigurationButton()
     this.addQuestionClickManager()
     this.addAnswerClickManager()
+    this.addUserAnnotations(this._mapId)
   }
   addConfigurationButton () {
     let configurationButton = document.querySelector('.chatin-configuration-button')
@@ -106,6 +115,108 @@ class MindmapManager {
       // Insert the cloned button before the original button
       button.parentNode.insertBefore(clone, button)
     }
+  }
+  addUserAnnotations (mapId) {
+    let that = this
+    chrome.runtime.sendMessage({ scope: 'ratingManager', cmd: 'getRatings' }, (data) => {
+      let currentRatedNodes = data.ratings.filter(r => r.mapID === mapId)
+      console.log('Current rated nodes:', currentRatedNodes)
+      currentRatedNodes.forEach((r) => {
+        if (r.userAnnotation && r.userAnnotation !== '') {
+          let node = MindmapWrapper.getNodeById(r.nodeID)
+          if (!node._domElement.classList.contains('userAnnotationTag')) {
+            let nodeTitleDiv = node._domElement.querySelector('.node-title')
+            if (nodeTitleDiv) {
+              var nextSibling = nodeTitleDiv.nextElementSibling // This gets the next sibling element
+              if (nextSibling) {
+                console.log('Next sibling element:', nextSibling)
+                var duplicate = nextSibling.cloneNode(true)
+                // Add the class 'userAnnotationTag'
+                node._domElement.classList.add('userAnnotationTag')
+                // Change the color to rating.value.color (assuming 'rating.value.color' is available)
+                let child = duplicate.querySelector('.kr-text')
+                child.style.backgroundColor = PromptStyles[r.ratingValue].borderColor
+                // Add a click listener to the duplicated element
+                duplicate.addEventListener('click', function () {
+                  console.log('Duplicated element clicked')
+                  // Additional actions can be performed here on click
+                  const selector = '#modal_' + r.nodeID
+                  let currentModal = nodeTitleDiv.querySelector(selector)
+                  if (currentModal) {
+                    currentModal.remove()
+                  } else {
+                    that.showModal(r, nodeTitleDiv)
+                  }
+                })
+                // Insert the duplicate into the DOM, after the original nextSibling
+                nextSibling.parentNode.insertBefore(duplicate, nextSibling.nextSibling)
+                // You can now work with the next sibling element
+              } else {
+                console.log('No next sibling element found.')
+              }
+            }
+          }
+        }
+      })
+    })
+  }
+
+  addUserAnnotation (mapID, r) {
+    let that = this
+    if (r.userAnnotation && r.userAnnotation !== '') {
+      let node = MindmapWrapper.getNodeById(r.nodeID)
+      let nodeTitleDiv = node._domElement.querySelector('.node-title')
+      if (node._domElement.classList.contains('userAnnotationTag')) {
+        let toRemove = nodeTitleDiv.nextElementSibling.nextElementSibling
+        toRemove.remove()
+      }
+      if (nodeTitleDiv) {
+        var nextSibling = nodeTitleDiv.nextElementSibling // This gets the next sibling element
+        if (nextSibling) {
+          console.log('Next sibling element:', nextSibling)
+          var duplicate = nextSibling.cloneNode(true)
+          // Add the class 'userAnnotationTag'
+          if (!node._domElement.classList.contains('userAnnotationTag')) {
+            node._domElement.classList.add('userAnnotationTag')
+          }
+          // Change the color to rating.value.color (assuming 'rating.value.color' is available)
+          let child = duplicate.querySelector('.kr-text')
+          child.style.backgroundColor = PromptStyles[r.ratingValue].borderColor
+          // Add a click listener to the duplicated element
+          duplicate.addEventListener('click', function () {
+            console.log('Duplicated element clicked')
+            // Additional actions can be performed here on click
+            const selector = '#modal_' + r.nodeID
+            let currentModal = nodeTitleDiv.querySelector(selector)
+            if (currentModal) {
+              currentModal.remove()
+            } else {
+              that.showModal(r, nodeTitleDiv)
+            }
+          })
+          // Insert the duplicate into the DOM, after the original nextSibling
+          nextSibling.parentNode.insertBefore(duplicate, nextSibling.nextSibling)
+          // You can now work with the next sibling element
+        } else {
+          console.log('No next sibling element found.')
+        }
+      }
+    }
+  }
+
+  showModal (r, nodeTitleDiv) {
+    // Create modal HTML
+    let modal = document.createElement('div')
+    modal.style.cssText = 'z-index:1000;background-color:white;width:100%;height:100%;margin-left:10px;color: black; display: flex; align-items: center; justify-content: center; border-color: black; border-width: 1px; border-style: solid;'
+    modal.innerText = r.userAnnotation
+    modal.id = 'modal_' + r.nodeID
+    // Append modal to body
+    nodeTitleDiv.appendChild(modal)
+
+    // Add click event to close button
+    modal.addEventListener('click', function() {
+      modal.remove()
+    })
   }
 
   /**
@@ -175,7 +286,7 @@ class MindmapManager {
           })
         })
         // ADD CONSENSUS BUTTON
-        let consensusButton = div.cloneNode(true)
+        /* let consensusButton = div.cloneNode(true)
         // Optionally, you can change the content or attributes of the duplicate
         consensusButton.textContent = 'Consensus'
         consensusButton.style = 'width: 100%; margin-bottom: 10px; padding-top: 7px; padding-bottom: 7px; flex-direction: column; align-items: center; justify-content: center; border-radius: 10px; background-color: rgba(0, 0, 0, 0.05); cursor: pointer; transform: scaleX(1) scaleY(1);'
@@ -190,6 +301,34 @@ class MindmapManager {
             const uri = 'https://consensus.app/results/?q=' + encodedUri
             window.open(uri)
             console.log('click on Consensus')
+          })
+        }) */
+        // ADD USER FEEDBACK BUTTON
+        let userFeedbackButton = div.cloneNode(true)
+        // Optionally, you can change the content or attributes of the duplicate
+        userFeedbackButton.textContent = 'UserFeedback'
+        userFeedbackButton.style = 'width: 100%; margin-bottom: 10px; padding-top: 7px; padding-bottom: 7px; flex-direction: column; align-items: center; justify-content: center; border-radius: 10px; background-color: rgba(0, 0, 0, 0.05); cursor: pointer; transform: scaleX(1) scaleY(1);'
+        // Insert the duplicate after the original div
+        div.parentNode.insertBefore(userFeedbackButton, div.nextSibling)
+        userFeedbackButton.addEventListener('click', function (event) {
+          console.log('click on userFeedbackButton')
+          that.parseMap().then(() => {
+            let questionNodeObject = that._mindmapParser.getNodeById(questionNode.getAttribute('data-id'))
+            chrome.runtime.sendMessage({ scope: 'ratingManager', cmd: 'getRatings' }, (data) => {// Find a rating that matches the mapID and nodeID
+              let rating = null
+              let ratings = data.ratings
+              if (ratings.length > 0) {
+                rating = ratings.find(r => r.mapID === that._mapId && r.nodeID === questionNode.getAttribute('data-id'))
+              }
+              if (rating) {
+                console.log('Rating found:', rating)
+                that.editFeedback(questionNodeObject, that._mapId, rating, ratings)
+                // You can perform further actions with the found rating here
+              } else {
+                that.newFeedback(questionNodeObject, that._mapId, ratings)
+                console.log('No rating found for the specified mapID and nodeID');
+              }
+            })
           })
         })
       }
@@ -255,7 +394,7 @@ class MindmapManager {
   /**
    * Perform questions
    */
-  // eslint-disable-next-line camelcase
+// eslint-disable-next-line camelcase
   perform_DataSourceLMM_Question (node) {
     Alerts.showLoadingWindow('Creating prompt...')
     let that = this
@@ -324,7 +463,7 @@ class MindmapManager {
       })
     })
   }
-  // eslint-disable-next-line camelcase
+// eslint-disable-next-line camelcase
   perform_DataSourcePDF_Question (node, id, name) {
     Alerts.showLoadingWindow(`Creating prompt...`)
     let that = this
@@ -515,6 +654,112 @@ class MindmapManager {
       })
     }
     console.log(prompt)
+  }
+  newFeedback (node, mapID, ratings) {
+    let nodeID = node._info.id
+    let userAnnotation
+    let ratingValue
+    let html = '<div>' + '<span style="text-align: left;">Rating ' + node._info.title + '</span>' +
+      '<div>' +
+      '<span style="text-align: left;">User Annotation</span>' +
+      '<textarea id="userAnnotation" class="swal2-input customizeInput" placeholder="Provide your feedback"></textarea>' +
+      '</div>'
+    html += '<span style="text-align:left">Rating (1-5):</span><input type="number" min="1" max="5" id="ratingValue" class="swal2-input customizeInput" placeholder="Rate the node"></input></div>'
+    Alerts.threeOptionsAlert({
+      title: 'Creating feedback',
+      html: html,
+      showDenyButton: false,
+      willOpen: () => {
+        let element = document.querySelector('.swal2-popup')
+        element.style.width = '900px'
+      },
+      preConfirm: () => {
+        // Retrieve values from inputs
+        userAnnotation = document.getElementById('userAnnotation').value
+        ratingValue = document.getElementById('ratingValue').value
+        if (!ratingValue) {
+          // Throw an error or reject a promise to prevent closing the alert
+          const swal = require('sweetalert2')
+          swal.showValidationMessage('Please provide a rating.') // This will display an error message in the SweetAlert
+          return false // Prevents the alert from closing
+        } else if (ratingValue < 1 || ratingValue > 5) {
+          const swal = require('sweetalert2')
+          swal.showValidationMessage('Please provide a rating between 1 and 5.') // This will display an error message in the SweetAlert
+          return false // Prevents the alert from closing
+        }
+      },
+      callback: () => {
+        // Save model
+        let rating = {mapID: mapID, nodeID: nodeID, userAnnotation: userAnnotation, ratingValue: ratingValue}
+        ratings.push(rating)
+        chrome.runtime.sendMessage({ scope: 'ratingManager', cmd: 'setRatings', data: { ratings: ratings } }, ({ ratings }) => {
+          if (ratings) {
+            console.log('Ratings updated:', ratings)
+            this.updateRatedNode(node, rating)
+            // update rated node with the new rating
+          }
+        })
+      }
+    })
+  }
+  editFeedback (node, mapID, rating, ratings) {
+    let userAnnotation = rating.userAnnotation
+    let ratingValue = rating.ratingValue
+    let html = '<div>' + '<span style="text-align: left;">Rating ' + node._info.title.replaceAll('\n', ' ') + '</span>' +
+      '<div>' +
+      '<span style="text-align: left;">User Annotation</span>' +
+      '<textarea id="userAnnotation" class="swal2-input customizeInput" placeholder="Provide your feedback">' + userAnnotation + '</textarea>' +
+      '</div>'
+    html += '<span style="text-align:left">Rating (1-5):</span><input type="number" min="1" max="5" id="ratingValue" class="swal2-input customizeInput" placeholder="Rate the node" value="' + ratingValue + '"></input></div>'
+    Alerts.threeOptionsAlert({
+      title: 'Modifying user feedback',
+      html: html,
+      preConfirm: () => {
+        // Retrieve values from inputs
+        userAnnotation = document.getElementById('userAnnotation').value
+        ratingValue = document.getElementById('ratingValue').value
+        if (!ratingValue) {
+          // Throw an error or reject a promise to prevent closing the alert
+          const swal = require('sweetalert2')
+          swal.showValidationMessage('Please provide a rating.') // This will display an error message in the SweetAlert
+          return false // Prevents the alert from closing
+        } else if (ratingValue < 1 || ratingValue > 5) {
+          const swal = require('sweetalert2')
+          swal.showValidationMessage('Please provide a rating between 1 and 5.') // This will display an error message in the SweetAlert
+          return false // Prevents the alert from closing
+        }
+      },
+      willOpen: () => {
+        let element = document.querySelector('.swal2-popup')
+        element.style.width = '900px'
+      },
+      callback: () => {
+        // Save model
+        if (ratings) {
+          const ratingIndex = ratings.findIndex(r => r.nodeID === rating.nodeID && r.mapID === rating.mapID) // Find the index of the model
+          if (ratingIndex !== -1) {
+            // Update the model's selected status within the array
+            ratings[ratingIndex].userAnnotation = userAnnotation
+            ratings[ratingIndex].ratingValue = ratingValue
+            let rating = ratings[ratingIndex]
+            chrome.runtime.sendMessage({
+              scope: 'ratingManager',
+              cmd: 'setRatings',
+              data: { ratings: ratings }
+            }, (newRatings) => {
+              console.log('Rating updated:', ratings[ratingIndex])
+              this.updateRatedNode(node, rating)
+              /// this.createModelList(models.model)
+            })
+          }
+        }
+      },
+      denyButtonText: 'Delete',
+      denyButtonColor: '#d33',
+      denyCallback: () => {
+        this.deleteRating(rating, ratings)
+      }
+    })
   }
   retrieveLLMSuggestedQuestion (that, nodeId, prompt) {
     return new Promise((resolve, reject) => {
@@ -813,11 +1058,6 @@ class MindmapManager {
     if (items == null) return []
     return items.map((it) => it.replace(/</g, '').replace(/>/g, '').trim())
   }
-  static createRegexpFromPrompt (text) {
-    let questionPrompt = text.replace(/<[^>]+>/g, '.+').replace(/\?/g, '?')
-    let promptRegExp = new RegExp(questionPrompt, 'gi')
-    return promptRegExp
-  }
   addPreviousNoteToPrompt (that, prompt, questionNode) {
     let title, note
     if (questionNode._info.parent) {
@@ -831,6 +1071,20 @@ class MindmapManager {
       }
     }
     return prompt
+  }
+  updateRatedNode (node, rating) {
+    console.log(node)
+    MindmeisterClient.doActions(this._mapId,
+      [],
+      [{id: node._info.id, style: PromptStyles[rating.ratingValue]}]
+    ).then((response) => {
+      if (response.error) {
+        Alerts.showErrorToast('There was an error adding the node to the map')
+      } else {
+        this.addUserAnnotation(this._mapId, rating)
+        Alerts.closeLoadingWindow()
+      }
+    })
   }
   getCurrentNode () {
     let elements = Array.from(document.querySelectorAll('div')).filter(el => {
@@ -886,16 +1140,6 @@ class MindmapManager {
   isQuestionNode (node) {
     return MindmapWrapper.hasIcon(node, 'question')
   }
-
-  findIssue (text, nodeId) {
-    let id = nodeId > 0 ? nodeId : null
-    for (let i = 0; i < this._scopingAnalysis.length; i++) {
-      let issue = this._scopingAnalysis[i].findIssue(text, id)
-      if (issue != null) return issue
-    }
-    return null
-  }
-
   initManagers (that) {
     const checkDOM = setInterval(function () {
       // Options for the observer (which mutations to observe)

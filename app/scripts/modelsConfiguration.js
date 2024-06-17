@@ -1,4 +1,5 @@
 import Alerts from './utils/Alerts'
+import swal from 'sweetalert2'
 
 window.onload = () => {
   if (window.location.href.includes('pages/modelConfiguration.html')) {
@@ -11,9 +12,12 @@ class ModelConfiguration {
   init () {
     chrome.runtime.sendMessage({ scope: 'model', cmd: 'getModels' }, (models) => {
       this.createModelList(models.models)
-      document.querySelector('.add-button').addEventListener('click', () => {
-        let input = document.querySelector('#modelInputName').value
-        this.addNewModel(input)
+      chrome.runtime.sendMessage({ scope: 'parameters', cmd: 'getParameters' }, (data) => {
+        this.updateOptionsList(data.parameters)
+        document.querySelector('.add-button').addEventListener('click', () => {
+          let input = document.querySelector('#modelInputName').value
+          this.addNewModel(input)
+        })
       })
     })
   }
@@ -99,6 +103,12 @@ class ModelConfiguration {
     Alerts.threeOptionsAlert({
       title: 'Modifying model',
       html: html,
+      willOpen: () => {
+        let element = document.querySelector('.swal2-popup')
+        element.style.width = '900px'
+        let description = document.querySelector('#description')
+        description.style.height = '400px'
+      },
       preConfirm: () => {
         // Retrieve values from inputs
         modelName = document.getElementById('name').value
@@ -151,11 +161,35 @@ class ModelConfiguration {
       title: 'Fill out your model',
       html: html,
       showDenyButton: false,
+      willOpen: () => {
+        let element = document.querySelector('.swal2-popup')
+        element.style.width = '900px'
+        let description = document.querySelector('#description')
+        description.style.height = '400px'
+      },
       preConfirm: () => {
         // Retrieve values from inputs
         modelName = document.getElementById('name').value
         description = document.getElementById('description').value
         numberOfQuestions = document.getElementById('numberOfQuestions').value
+        if (!numberOfQuestions) {
+          // Throw an error or reject a promise to prevent closing the alert
+          const swal = require('sweetalert2')
+          swal.showValidationMessage('Please provide a rating.') // This will display an error message in the SweetAlert
+          return false // Prevents the alert from closing
+        }
+        if (!description) {
+          // Throw an error or reject a promise to prevent closing the alert
+          const swal = require('sweetalert2')
+          swal.showValidationMessage('Please provide a description.') // This will display an error message in the SweetAlert
+          return false // Prevents the alert from closing
+        }
+        if (!modelName) {
+          // Throw an error or reject a promise to prevent closing the alert
+          const swal = require('sweetalert2')
+          swal.showValidationMessage('Please provide a name.') // This will display an error message in the SweetAlert
+          return false // Prevents the alert from closing
+        }
       },
       callback: () => {
         // Save model
@@ -194,6 +228,34 @@ class ModelConfiguration {
     })
   }
 
+  updateOptionsList (parameters) {
+    // Function to handle the editing logic */
+    const followUpQuestion = document.getElementById('followUpQuestion')
+    followUpQuestion.checked = parameters.followUpQuestion
+    followUpQuestion.addEventListener('change', () => {
+      parameters.followUpQuestion = followUpQuestion.checked
+      this.updateParameters(parameters)
+    })
+    const userProvidedAnswer = document.getElementById('userProvidedAnswer')
+    userProvidedAnswer.checked = parameters.userProvidedAnswer
+    userProvidedAnswer.addEventListener('change', () => {
+      parameters.userProvidedAnswer = userProvidedAnswer.checked
+      this.updateParameters(parameters)
+    })
+    const suggestQuestionsByLLM = document.getElementById('suggestQuestionsByLLM')
+    suggestQuestionsByLLM.checked = parameters.suggestQuestionsByLLM
+    suggestQuestionsByLLM.addEventListener('change', () => {
+      parameters.suggestQuestionsByLLM = suggestQuestionsByLLM.checked
+      this.updateParameters(parameters)
+    })
+    const showSource = document.getElementById('showSource')
+    showSource.checked = parameters.showSource
+    showSource.addEventListener('change', () => {
+      parameters.showSource = showSource.checked
+      this.updateParameters(parameters)
+    })
+  }
+
   findAvailableId (models) {
     let id = models.length // Start checking from the length of the array
     let ids = new Set(models.map(model => model.id)) // Create a set of existing IDs for quick lookup
@@ -204,6 +266,17 @@ class ModelConfiguration {
     }
 
     return id // Return the first available ID not found in the set
+  }
+
+  updateParameters (parameters) {
+    chrome.runtime.sendMessage({
+      scope: 'parameters',
+      cmd: 'setParameters',
+      data: { parameters: parameters }
+    }, (parameters) => {
+      console.log('Parameters updated:', parameters)
+      // this.createModelList(models.model)
+    })
   }
 }
 

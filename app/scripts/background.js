@@ -4,6 +4,7 @@ const ChatGPTBackground = require('./chatgpt/ChatGPTBackground')
 const LLMManagerBackground = require('./background/LLMManagerBackground')
 const ModelManager = require('./background/ModelManager')
 const ParameterManager = require('./background/ParameterManager')
+const RatingManager = require('./background/RatingManager')
 
 class Background {
   constructor () {
@@ -12,6 +13,7 @@ class Background {
     this.llmManager = null
     this.modelManager = null
     this.parameterManager = null
+    this.ratingManager = null
   }
   init () {
     this._mindmeisterManager = new MindmeisterBackground()
@@ -25,6 +27,8 @@ class Background {
     this.modelManager.init()
     this.parameterManager = new ParameterManager()
     this.parameterManager.init()
+    this.ratingManager = new RatingManager()
+    this.ratingManager.init()
 
     /* chrome.browserAction.onClicked.addListener(function () {
       var newURL = chrome.extension.getURL('pages/options.html')
