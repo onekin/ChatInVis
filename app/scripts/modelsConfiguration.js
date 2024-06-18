@@ -1,5 +1,4 @@
 import Alerts from './utils/Alerts'
-import swal from 'sweetalert2'
 
 window.onload = () => {
   if (window.location.href.includes('pages/modelConfiguration.html')) {
@@ -248,12 +247,12 @@ class ModelConfiguration {
       parameters.suggestQuestionsByLLM = suggestQuestionsByLLM.checked
       this.updateParameters(parameters)
     })
-    const showSource = document.getElementById('showSource')
+    /* const showSource = document.getElementById('showSource')
     showSource.checked = parameters.showSource
     showSource.addEventListener('change', () => {
       parameters.showSource = showSource.checked
       this.updateParameters(parameters)
-    })
+    }) */
   }
 
   findAvailableId (models) {

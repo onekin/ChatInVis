@@ -5,6 +5,7 @@ const LLMManagerBackground = require('./background/LLMManagerBackground')
 const ModelManager = require('./background/ModelManager')
 const ParameterManager = require('./background/ParameterManager')
 const RatingManager = require('./background/RatingManager')
+const LogManager = require('./background/LogManager')
 
 class Background {
   constructor () {
@@ -14,6 +15,7 @@ class Background {
     this.modelManager = null
     this.parameterManager = null
     this.ratingManager = null
+    this.logManager = null
   }
   init () {
     this._mindmeisterManager = new MindmeisterBackground()
@@ -29,6 +31,8 @@ class Background {
     this.parameterManager.init()
     this.ratingManager = new RatingManager()
     this.ratingManager.init()
+    this.logManager = new LogManager()
+    this.logManager.init()
 
     /* chrome.browserAction.onClicked.addListener(function () {
       var newURL = chrome.extension.getURL('pages/options.html')

@@ -6,8 +6,15 @@ class CheckMapUtils {
       return false
     }
   }
-  static nodeElementHasRectangleShape (node) {
+  static mindmapNodeHasRectangleShape (node) {
     if (node._domElement.parentElement.innerHTML.includes('border-radius: 0px;') && node._domElement.parentElement.innerHTML.includes('padding: 11.4px')) {
+      return true
+    } else {
+      return false
+    }
+  }
+  static nodeElementHasRectangleShape (node) {
+    if (node.parentElement.innerHTML.includes('border-radius: 0px;') && node._domElement.parentElement.innerHTML.includes('padding: 11.4px')) {
       return true
     } else {
       return false

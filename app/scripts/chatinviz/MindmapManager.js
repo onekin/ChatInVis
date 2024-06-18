@@ -16,7 +16,6 @@ const Utils = require('../utils/Utils')
 const CheckMapUtils = require('../utils/CheckMapUtils')
 const Locators = require('../mindmeister/wrapper/Locators')
 
-
 class MindmapManager {
   constructor () {
     this._mapId = null
@@ -59,7 +58,7 @@ class MindmapManager {
   isChatinVizMap (rootNode) {
     // Save if it is a ChatinViz map
     return new Promise((resolve, reject) => {
-      if (CheckMapUtils.nodeElementHasQuestionMark(rootNode) && CheckMapUtils.nodeElementHasRectangleShape(rootNode)) {
+      if (CheckMapUtils.nodeElementHasQuestionMark(rootNode) && CheckMapUtils.mindmapNodeHasRectangleShape(rootNode)) {
         resolve()
       } else {
         Alerts.showErrorToast('This is not a ChatinViz map')
@@ -120,7 +119,6 @@ class MindmapManager {
     let that = this
     chrome.runtime.sendMessage({ scope: 'ratingManager', cmd: 'getRatings' }, (data) => {
       let currentRatedNodes = data.ratings.filter(r => r.mapID === mapId)
-      console.log('Current rated nodes:', currentRatedNodes)
       currentRatedNodes.forEach((r) => {
         if (r.userAnnotation && r.userAnnotation !== '') {
           let node = MindmapWrapper.getNodeById(r.nodeID)
@@ -129,7 +127,6 @@ class MindmapManager {
             if (nodeTitleDiv) {
               var nextSibling = nodeTitleDiv.nextElementSibling // This gets the next sibling element
               if (nextSibling) {
-                console.log('Next sibling element:', nextSibling)
                 var duplicate = nextSibling.cloneNode(true)
                 // Add the class 'userAnnotationTag'
                 node._domElement.classList.add('userAnnotationTag')
@@ -138,7 +135,6 @@ class MindmapManager {
                 child.style.backgroundColor = PromptStyles[r.ratingValue].borderColor
                 // Add a click listener to the duplicated element
                 duplicate.addEventListener('click', function () {
-                  console.log('Duplicated element clicked')
                   // Additional actions can be performed here on click
                   const selector = '#modal_' + r.nodeID
                   let currentModal = nodeTitleDiv.querySelector(selector)
@@ -151,8 +147,6 @@ class MindmapManager {
                 // Insert the duplicate into the DOM, after the original nextSibling
                 nextSibling.parentNode.insertBefore(duplicate, nextSibling.nextSibling)
                 // You can now work with the next sibling element
-              } else {
-                console.log('No next sibling element found.')
               }
             }
           }
@@ -160,7 +154,6 @@ class MindmapManager {
       })
     })
   }
-
   addUserAnnotation (mapID, r) {
     let that = this
     if (r.userAnnotation && r.userAnnotation !== '') {
@@ -214,7 +207,7 @@ class MindmapManager {
     nodeTitleDiv.appendChild(modal)
 
     // Add click event to close button
-    modal.addEventListener('click', function() {
+    modal.addEventListener('click', function () {
       modal.remove()
     })
   }
@@ -314,7 +307,7 @@ class MindmapManager {
           console.log('click on userFeedbackButton')
           that.parseMap().then(() => {
             let questionNodeObject = that._mindmapParser.getNodeById(questionNode.getAttribute('data-id'))
-            chrome.runtime.sendMessage({ scope: 'ratingManager', cmd: 'getRatings' }, (data) => {// Find a rating that matches the mapID and nodeID
+            chrome.runtime.sendMessage({ scope: 'ratingManager', cmd: 'getRatings' }, (data) => { // Find a rating that matches the mapID and nodeID
               let rating = null
               let ratings = data.ratings
               if (ratings.length > 0) {
@@ -326,7 +319,7 @@ class MindmapManager {
                 // You can perform further actions with the found rating here
               } else {
                 that.newFeedback(questionNodeObject, that._mapId, ratings)
-                console.log('No rating found for the specified mapID and nodeID');
+                console.log('No rating found for the specified mapID and nodeID')
               }
             })
           })
@@ -394,168 +387,222 @@ class MindmapManager {
   /**
    * Perform questions
    */
-// eslint-disable-next-line camelcase
+  // eslint-disable-next-line camelcase
   perform_DataSourceLMM_Question (node) {
-    Alerts.showLoadingWindow('Creating prompt...')
-    let that = this
-    this.parseMap().then(() => {
-      let questionNode, nodeId
-      if (node._domElement) {
-        node = node._domElement
-      }
-      if (node.dataset) {
-        questionNode = that._mindmapParser.getNodeById(node.dataset.id)
-        nodeId = node.dataset.id
-      }
-      let question = questionNode._info.title.replaceAll('\n', ' ')
-      let prompt = PromptBuilder.getPromptForLLMAnswers(this, question)
-      prompt = that.addPreviousNoteToPrompt(that, prompt, questionNode)
-      console.log('prompt:\n ' + prompt)
-      chrome.runtime.sendMessage({ scope: 'llm', cmd: 'getSelectedLLM' }, async ({ llm }) => {
-        if (llm === '') {
-          llm = Config.defaultLLM
+    chrome.runtime.sendMessage({ scope: 'parameters', cmd: 'getParameters' }, async (data) => {
+      Alerts.showLoadingWindow('Creating prompt...')
+      let that = this
+      this.parseMap().then(() => {
+        let questionNode, nodeId
+        if (node._domElement) {
+          node = node._domElement
         }
-        Alerts.showLoadingWindow('Waiting for ' + llm.charAt(0).toUpperCase() + llm.slice(1) + 's answer...')
-        chrome.runtime.sendMessage({ scope: 'llm', cmd: 'getAPIKEY', data: llm }, ({ apiKey }) => {
-          if (apiKey !== null && apiKey !== '') {
-            let callback = (json) => {
-              Alerts.closeLoadingWindow()
-              let gptItemsNodes = that.parseChatGPTAnswer(json)
-              if (gptItemsNodes === null || gptItemsNodes.length === 0) {
-                Alerts.showErrorToast(`There was an error parsing ChatGPT's answer. Check browser console to see the whole answer.`)
-              }
-              let nodes
-              // GPT Answers
-              gptItemsNodes = gptItemsNodes.map((c) => {
-                return {
-                  text: c.label,
-                  style: PromptStyles.SystemAnswerItem,
-                  image: IconsMap['magnifier'],
-                  parentId: nodeId,
-                  note: c.description + '\n\n<b>Source: ' + llm + '</b>'
-                }
-              })
-              nodes = gptItemsNodes
-              MindmeisterClient.addNodes(that._mapId, nodes).then((response) => {
-                if (response.error) {
-                  Alerts.showErrorToast('There was an error adding the nodes to the map')
-                } else {
-                  Alerts.closeLoadingWindow()
-                  let title = document.querySelectorAll('.plusTitle')
-                  if (title) {
-                    title.forEach((t) => {
-                      t.remove()
-                    })
-                  }
-                }
-              })
-            }
-            LLMClient.simpleQuestion({
-              apiKey: apiKey,
-              prompt: prompt,
-              llm: llm,
-              callback: callback
-            })
-          } else {
-            Alerts.showErrorToast('No API key found for ' + llm)
+        if (node.dataset) {
+          questionNode = that._mindmapParser.getNodeById(node.dataset.id)
+          nodeId = node.dataset.id
+        }
+        let question = questionNode._info.title.replaceAll('\n', ' ')
+        let prompt = PromptBuilder.getPromptForLLMAnswers(this, question)
+        prompt = that.addPreviousNoteToPrompt(that, prompt, questionNode)
+        let previousAnswer = ''
+        if (questionNode._info.parent) {
+          const parent = that._mindmapParser.getNodeById(questionNode._info.parent)
+          previousAnswer = parent._info.title.replaceAll('\n', ' ')
+        }
+        let action
+        if (CheckMapUtils.nodeElementHasRectangleShape(node) && !that.isRootNode(node)) {
+          action = 'addQuestion'
+        } else if (that.isRootNode(node)) {
+          action = 'selectQuestion'
+        } else {
+          action = 'firstQuestion'
+        }
+        console.log('prompt:\n ' + prompt)
+        chrome.runtime.sendMessage({ scope: 'llm', cmd: 'getSelectedLLM' }, async ({ llm }) => {
+          if (llm === '') {
+            llm = Config.defaultLLM
           }
+          Alerts.showLoadingWindow('Waiting for ' + llm.charAt(0).toUpperCase() + llm.slice(1) + 's answer...')
+          chrome.runtime.sendMessage({ scope: 'llm', cmd: 'getAPIKEY', data: llm }, ({ apiKey }) => {
+            if (apiKey !== null && apiKey !== '') {
+              let callback = (json) => {
+                Alerts.closeLoadingWindow()
+                let gptItemsNodes = that.parseChatGPTAnswer(json)
+                if (gptItemsNodes === null || gptItemsNodes.length === 0) {
+                  Alerts.showErrorToast(`There was an error parsing ChatGPT's answer. Check browser console to see the whole answer.`)
+                }
+                let nodes
+                // GPT Answers
+                gptItemsNodes = gptItemsNodes.map((c) => {
+                  return {
+                    text: c.label,
+                    style: PromptStyles.SystemAnswerItem,
+                    image: IconsMap['magnifier'],
+                    parentId: nodeId,
+                    note: c.description + '\n\n<b>Source: ' + llm + '</b>'
+                  }
+                })
+                nodes = gptItemsNodes
+                // ADD USER ANSWER
+                if (data.parameters.userProvidedAnswer) {
+                  nodes.push({
+                    text: 'Type here your answer ...',
+                    style: PromptStyles.UserAnswerItem,
+                    image: IconsMap['magnifier'],
+                    parentId: nodeId,
+                    note: '<b>Answer from User</b>'
+                  })
+                }
+                MindmeisterClient.addNodes(that._mapId, nodes).then((response) => {
+                  if (response.error) {
+                    Alerts.showErrorToast('There was an error adding the nodes to the map')
+                  } else {
+                    let log = { action: action, mapId: that._mapId, nodeID: nodeId, value: {question: question, answer: previousAnswer}, user: 'default', timestamp: Date.now() }
+                    that.pushLog(log)
+                    Alerts.closeLoadingWindow()
+                    let title = document.querySelectorAll('.plusTitle')
+                    if (title) {
+                      title.forEach((t) => {
+                        t.remove()
+                      })
+                    }
+                  }
+                })
+              }
+              LLMClient.simpleQuestion({
+                apiKey: apiKey,
+                prompt: prompt,
+                llm: llm,
+                callback: callback
+              })
+            } else {
+              Alerts.showErrorToast('No API key found for ' + llm)
+            }
+          })
         })
       })
     })
   }
-// eslint-disable-next-line camelcase
+  // eslint-disable-next-line camelcase
   perform_DataSourcePDF_Question (node, id, name) {
-    Alerts.showLoadingWindow(`Creating prompt...`)
-    let that = this
-    this.parseMap().then(() => {
-      let prompt = PromptBuilder.getPromptForPDFAnswers(this, node.text)
-      let questionNode = that._mindmapParser.getNodeById(node.id)
-      prompt = that.addPreviousNoteToPrompt(that, prompt, questionNode)
-      console.log('prompt: ' + prompt)
-      // Ensure workerSrc is set before loading the document
-      // eslint-disable-next-line no-undef
-      PDFJS.workerSrc = chrome.runtime.getURL('resources/pdfjs/build/pdf.worker.js')
-      MindmeisterClient.getToken().then(token => {
-        var myHeaders = new Headers()
-        myHeaders.append('accept', 'application/pdf') // Changed to 'application/pdf'
-        var requestOptions = {
-          method: 'GET',
-          headers: myHeaders,
-          redirect: 'follow'
+    chrome.runtime.sendMessage({ scope: 'parameters', cmd: 'getParameters' }, async (data) => {
+      Alerts.showLoadingWindow(`Creating prompt...`)
+      let that = this
+      this.parseMap().then(() => {
+        let prompt = PromptBuilder.getPromptForPDFAnswers(this, node.text)
+        let questionNode = that._mindmapParser.getNodeById(node.id)
+        prompt = that.addPreviousNoteToPrompt(that, prompt, questionNode)
+        let previousAnswer = ''
+        if (questionNode._info.parent) {
+          const parent = that._mindmapParser.getNodeById(questionNode._info.parent)
+          previousAnswer = parent._info.title.replaceAll('\n', ' ')
         }
-        fetch('https://www.mindmeister.com/api/v2/files/' + id + '/attachment?access_token=' + token, requestOptions)
-          .then(response => {
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`)
-            } else {
-              return response.arrayBuffer()
-            }
-          })
-          .then(pdfData => {
-            // eslint-disable-next-line no-undef
-            PDFJS.getDocument({ data: pdfData }).promise.then(async pdfDocument => {
-              let documents = []
-              documents = await LLMTextUtils.loadDocument(pdfDocument)
-              chrome.runtime.sendMessage({ scope: 'llm', cmd: 'getSelectedLLM' }, async ({ llm }) => {
-                if (llm === '') {
-                  llm = Config.defaultLLM
-                }
-                Alerts.showLoadingWindow('Waiting for ' + llm.charAt(0).toUpperCase() + llm.slice(1) + 's answer...')
-                chrome.runtime.sendMessage({ scope: 'llm', cmd: 'getAPIKEY', data: llm }, ({ apiKey }) => {
-                  if (apiKey !== null && apiKey !== '') {
-                    let callback = (json) => {
-                      Alerts.closeLoadingWindow()
-                      const answers = that.parseChatGPTAnswer(json, true)
-                      if (answers === null || answers.length === 0) {
-                        Alerts.showErrorToast(`There was an error parsing ChatGPT's answer. Check browser console to see the whole answer.`)
-                      }
-                      // PDF Answers
-                      let nodes = answers.map((c) => {
-                        return {
-                          text: c.label,
-                          style: PromptStyles.SystemAnswerItem,
-                          image: IconsMap['magnifier'],
-                          parentId: node.id,
-                          note: c.description + '\n\n <b>Source: ' + name + ':</b>\n' + c.excerpt,
-                          attachment: id
-                        }
-                      })
-                      MindmeisterClient.addNodes(that._mapId, nodes).then((response) => {
-                        if (response.error) {
-                          Alerts.showAlertToast('There was an error adding the nodes to the map')
-                        } else {
-                          Alerts.closeLoadingWindow()
-                        }
-                      })
-                    }
-                    LLMClient.pdfBasedQuestion({
-                      apiKey: apiKey,
-                      documents: documents,
-                      prompt: prompt,
-                      llm: llm,
-                      callback: callback
-                    })
-                  } else {
-                    Alerts.showErrorToast('No API key found for ChatGPT')
-                  }
-                })
-              })
-            }).catch(error => {
-              console.error('Error in processing PDF: ', error)
-              Alerts.showErrorToast('Error in processing PDF: ' + error.message)
+        let action
+        if (CheckMapUtils.nodeElementHasRectangleShape(node) && !that.isRootNode(node)) {
+          action = 'addQuestionWithPDF'
+        } else if (that.isRootNode(node)) {
+          action = 'selectQuestionWithPDF'
+        } else {
+          action = 'firstQuestionWithPDF'
+        }
+        console.log('prompt: ' + prompt)
+        // Ensure workerSrc is set before loading the document
+        // eslint-disable-next-line no-undef
+        PDFJS.workerSrc = chrome.runtime.getURL('resources/pdfjs/build/pdf.worker.js')
+        MindmeisterClient.getToken().then(token => {
+          var myHeaders = new Headers()
+          myHeaders.append('accept', 'application/pdf') // Changed to 'application/pdf'
+          var requestOptions = {
+            method: 'GET',
+            headers: myHeaders,
+            redirect: 'follow'
+          }
+          fetch('https://www.mindmeister.com/api/v2/files/' + id + '/attachment?access_token=' + token, requestOptions)
+            .then(response => {
+              if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`)
+              } else {
+                return response.arrayBuffer()
+              }
             })
-          })
-          .catch(error => {
-            console.error('Error getting attached file:', error)
-            Alerts.showErrorToast('Error getting attached file: ' + error.message)
-          })
+            .then(pdfData => {
+              // eslint-disable-next-line no-undef
+              PDFJS.getDocument({ data: pdfData }).promise.then(async pdfDocument => {
+                let documents = []
+                documents = await LLMTextUtils.loadDocument(pdfDocument)
+                chrome.runtime.sendMessage({ scope: 'llm', cmd: 'getSelectedLLM' }, async ({ llm }) => {
+                  if (llm === '') {
+                    llm = Config.defaultLLM
+                  }
+                  Alerts.showLoadingWindow('Waiting for ' + llm.charAt(0).toUpperCase() + llm.slice(1) + 's answer...')
+                  chrome.runtime.sendMessage({ scope: 'llm', cmd: 'getAPIKEY', data: llm }, ({ apiKey }) => {
+                    if (apiKey !== null && apiKey !== '') {
+                      let callback = (json) => {
+                        Alerts.closeLoadingWindow()
+                        const answers = that.parseChatGPTAnswer(json, true)
+                        if (answers === null || answers.length === 0) {
+                          Alerts.showErrorToast(`There was an error parsing ChatGPT's answer. Check browser console to see the whole answer.`)
+                        }
+                        // PDF Answers
+                        let nodes = answers.map((c) => {
+                          return {
+                            text: c.label,
+                            style: PromptStyles.SystemAnswerItem,
+                            image: IconsMap['magnifier'],
+                            parentId: node.id,
+                            note: c.description + '\n\n <b>Source: ' + name + ':</b>\n' + c.excerpt,
+                            attachment: id
+                          }
+                        })
+                        // ADD USER ANSWER
+                        if (data.parameters.userProvidedAnswer) {
+                          nodes.push({
+                            text: 'Type here your answer ...',
+                            style: PromptStyles.UserAnswerItem,
+                            image: IconsMap['magnifier'],
+                            parentId: node.id,
+                            note: '<b>Answer from User</b>'
+                          })
+                        }
+                        MindmeisterClient.addNodes(that._mapId, nodes).then((response) => {
+                          if (response.error) {
+                            Alerts.showAlertToast('There was an error adding the nodes to the map')
+                          } else {
+                            let log = { action: action, mapId: that._mapId, nodeID: node.id, value: {question: questionNode._info.title, answer: previousAnswer}, user: 'default', timestamp: Date.now() }
+                            that.pushLog(log)
+                            Alerts.closeLoadingWindow()
+                          }
+                        })
+                      }
+                      LLMClient.pdfBasedQuestion({
+                        apiKey: apiKey,
+                        documents: documents,
+                        prompt: prompt,
+                        llm: llm,
+                        callback: callback
+                      })
+                    } else {
+                      Alerts.showErrorToast('No API key found for ChatGPT')
+                    }
+                  })
+                })
+              }).catch(error => {
+                console.error('Error in processing PDF: ', error)
+                Alerts.showErrorToast('Error in processing PDF: ' + error.message)
+              })
+            })
+            .catch(error => {
+              console.error('Error getting attached file:', error)
+              Alerts.showErrorToast('Error getting attached file: ' + error.message)
+            })
+        }).catch(error => {
+          console.error('Error getting token:', error)
+          Alerts.showErrorToast('Error getting token: ' + error.message)
+        })
       }).catch(error => {
-        console.error('Error getting token:', error)
-        Alerts.showErrorToast('Error getting token: ' + error.message)
+        console.error('Error parsing map:', error)
+        Alerts.showErrorToast('Error parsing map: ' + error.message)
       })
-    }).catch(error => {
-      console.error('Error parsing map:', error)
-      Alerts.showErrorToast('Error parsing map: ' + error.message)
     })
   }
   performSummarizationQuestion (node, type) {
@@ -571,7 +618,7 @@ class MindmapManager {
           if (childrenNodes.length > 0) {
             let style, icon
             if (type === 'answer') {
-              let answer = node.text + ' which means that ' + node._info.note.replace(/EXCERPT FROM[\s\S]*/, "")
+              let answer = node.text + ' which means that ' + node._info.note.replace(/EXCERPT FROM[\s\S]*/, '')
               prompt = PromptBuilder.getPromptForSummarizationQuestions(answer, childrenNodes, number)
               style = PromptStyles.SystemQuestionItem
               icon = IconsMap['question']
@@ -695,6 +742,8 @@ class MindmapManager {
         chrome.runtime.sendMessage({ scope: 'ratingManager', cmd: 'setRatings', data: { ratings: ratings } }, ({ ratings }) => {
           if (ratings) {
             console.log('Ratings updated:', ratings)
+            let log = { action: 'newFeedback', mapId: mapID, nodeID: nodeID, value: { userAnnotation: userAnnotation, ratingValue: ratingValue, textValue: node._info.title }, user: 'default', timestamp: Date.now() }
+            this.pushLog(log)
             this.updateRatedNode(node, rating)
             // update rated node with the new rating
           }
@@ -749,6 +798,8 @@ class MindmapManager {
             }, (newRatings) => {
               console.log('Rating updated:', ratings[ratingIndex])
               this.updateRatedNode(node, rating)
+              let log = { action: 'editFeedback', mapId: mapID, nodeID: r.nodeID, value: { userAnnotation: userAnnotation, ratingValue: ratingValue, textValue: node._info.title }, user: 'default', timestamp: Date.now() }
+              this.pushLog(log)
               /// this.createModelList(models.model)
             })
           }
@@ -858,32 +909,6 @@ class MindmapManager {
     })
     return gptItemsNodes
   }
-  parseChatGPTAnswerFromJSON (json, chatGPTBasedAnswers) {
-    let gptItems
-    if (chatGPTBasedAnswers) {
-      gptItems = Array.from(Object.values(json)[0]).filter(item =>
-        Object.keys(item).some(key => key.startsWith('GPT_'))
-      )
-    }
-    const pdfBasedItems = Array.from(Object.values(json)[0]).filter(item =>
-      !Object.keys(item).some(key => key.startsWith('GPT_'))
-    )
-    let gptItemsNodes = []
-    let pdfBasedItemsNodes = []
-    if (chatGPTBasedAnswers) {
-      gptItems.forEach((item) => {
-        let name = Utils.findValuesEndingWithName(item, 'name')
-        gptItemsNodes.push({ label: name, description: item.description })
-      })
-    } else {
-      gptItemsNodes = null
-    }
-    pdfBasedItems.forEach((item) => {
-      let name = Utils.findValuesEndingWithName(item, 'name')
-      pdfBasedItemsNodes.push({label: name, excerpt: '<em>' + item.excerpt + '</em>', description: item.description})
-    })
-    return {gptItemsNodes, pdfBasedItemsNodes}
-  }
   parseChatGPTAnswerFromAggregation (json) {
     let clusters
     clusters = Array.from(Object.values(json)[0]).filter(item =>
@@ -919,69 +944,83 @@ class MindmapManager {
     })
   }
   provideQuestions (node) {
-    Alerts.showLoadingWindow(`Loading...`)
-    // GPT Answers
-    let that = this
-    that.parseMap().then(async () => {
-      let answerNode, nodeId
-      if (node._domElement) {
-        node = node._domElement
-      }
-      if (node.dataset) {
-        answerNode = that._mindmapParser.getNodeById(node.dataset.id)
-        nodeId = node.dataset.id
-      }
-      let answerNodeLabel = answerNode._info.title.replaceAll('\n', ' ')
-      let answerNodeNote = answerNode._info.note
-      let previousQuestionNodeLabel
-      if (answerNode._info.parent) {
-        const previousQuestionNode = that._mindmapParser.getNodeById(answerNode._info.parent)
-        if (previousQuestionNode._info.title) {
-          previousQuestionNodeLabel = previousQuestionNode._info.title.replaceAll('\n', ' ')
+    chrome.runtime.sendMessage({ scope: 'parameters', cmd: 'getParameters' }, async (data) => {
+      Alerts.showLoadingWindow(`Loading...`)
+      // GPT Answers
+      let that = this
+      that.parseMap().then(async () => {
+        let answerNode, nodeId
+        if (node._domElement) {
+          node = node._domElement
         }
-      }
-      // PROMPT FOR RETRIEVING SUGGESTED QUESTIONS
-      chrome.runtime.sendMessage({ scope: 'model', cmd: 'getModels' }, async ({ models }) => {
-        console.log(models)
-        const fromLLM = (that, nodeId) => {
-          const llmSuggestedQuestionsPrompt = PromptBuilder.getPromptForLLMSuggestedQuestions(this, answerNodeLabel, answerNodeNote, previousQuestionNodeLabel, that._firsQuestion)
-          return that.retrieveLLMSuggestedQuestion(that, nodeId, llmSuggestedQuestionsPrompt)
+        if (node.dataset) {
+          answerNode = that._mindmapParser.getNodeById(node.dataset.id)
+          nodeId = node.dataset.id
         }
-        const fromModel = (that, nodeId, model) => {
-          const modelSuggestedQuestionsPrompt = PromptBuilder.getPromptForModelSuggestedQuestion(this, answerNodeLabel, answerNodeNote, previousQuestionNodeLabel, that._firsQuestion, model)
-          return that.retrieveModelSuggestedQuestions(that, nodeId, modelSuggestedQuestionsPrompt, model.name)
+        let answerNodeLabel = answerNode._info.title.replaceAll('\n', ' ')
+        let answerNodeNote = answerNode._info.note
+        let previousQuestionNodeLabel
+        if (answerNode._info.parent) {
+          const previousQuestionNode = that._mindmapParser.getNodeById(answerNode._info.parent)
+          if (previousQuestionNode._info.title) {
+            previousQuestionNodeLabel = previousQuestionNode._info.title.replaceAll('\n', ' ')
+          }
         }
-        // Create a promise for the LLM and for each model dynamically
-        const promises = [
-          ...models.filter(model => model.selected).map(model => fromModel(that, nodeId, model))
-        ]
-        promises.push(fromLLM(that, nodeId))
-        // Launch all methods separately and join the answers
-        Promise.allSettled(promises).then(results => {
-          let newQuestionNodes = []
-          results.forEach((result, index) => {
-            console.log(`Promise ${index} status:`, result.status)
-            if (result.status === 'fulfilled') {
-              newQuestionNodes = newQuestionNodes.concat(result.value)
-              console.log('Fulfilled with value:', result.value)
-            } else {
-              console.error('Rejected with reason:', result.reason)
+        let action
+        if (CheckMapUtils.nodeElementHasRectangleShape(node)) {
+          action = 'addAnswer'
+        } else {
+          action = 'selectAnswer'
+        }
+        // PROMPT FOR RETRIEVING SUGGESTED QUESTIONS
+        chrome.runtime.sendMessage({ scope: 'model', cmd: 'getModels' }, async ({ models }) => {
+          console.log(models)
+          const fromModel = (that, nodeId, model) => {
+            const modelSuggestedQuestionsPrompt = PromptBuilder.getPromptForModelSuggestedQuestion(this, answerNodeLabel, answerNodeNote, previousQuestionNodeLabel, that._firsQuestion, model)
+            return that.retrieveModelSuggestedQuestions(that, nodeId, modelSuggestedQuestionsPrompt, model.name)
+          }
+          // Create a promise for the LLM and for each model dynamically
+          const promises = [
+            ...models.filter(model => model.selected).map(model => fromModel(that, nodeId, model))
+          ]
+          if (data.parameters.suggestQuestionsByLLM) {
+            const fromLLM = (that, nodeId) => {
+              const llmSuggestedQuestionsPrompt = PromptBuilder.getPromptForLLMSuggestedQuestions(this, answerNodeLabel, answerNodeNote, previousQuestionNodeLabel, that._firsQuestion)
+              return that.retrieveLLMSuggestedQuestion(that, nodeId, llmSuggestedQuestionsPrompt)
             }
-          })
-          // ADD USER QUESTION
-          newQuestionNodes.push({
-            text: 'Type here a following up question about ' + answerNodeLabel + ' ...',
-            style: PromptStyles.UserQuestionItem,
-            image: IconsMap['question'],
-            parentId: nodeId,
-            note: '<b>Question from User</b>'
-          })
-          MindmeisterClient.doActions(that._mapId, newQuestionNodes).then((response) => {
-            if (response.error) {
-              Alerts.showErrorToast('There was an error adding the node to the map')
-            } else {
-              Alerts.closeLoadingWindow()
+            promises.push(fromLLM(that, nodeId))
+          }
+          // Launch all methods separately and join the answers
+          Promise.allSettled(promises).then(results => {
+            let newQuestionNodes = []
+            results.forEach((result, index) => {
+              console.log(`Promise ${index} status:`, result.status)
+              if (result.status === 'fulfilled') {
+                newQuestionNodes = newQuestionNodes.concat(result.value)
+                console.log('Fulfilled with value:', result.value)
+              } else {
+                console.error('Rejected with reason:', result.reason)
+              }
+            })
+            if (data.parameters.followUpQuestion) {
+              // ADD USER QUESTION
+              newQuestionNodes.push({
+                text: 'Type here a following up question about ' + answerNodeLabel + ' ...',
+                style: PromptStyles.UserQuestionItem,
+                image: IconsMap['question'],
+                parentId: nodeId,
+                note: '<b>Question from User</b>'
+              })
             }
+            MindmeisterClient.doActions(that._mapId, newQuestionNodes).then((response) => {
+              if (response.error) {
+                Alerts.showErrorToast('There was an error adding the node to the map')
+              } else {
+                let log = { action: action, mapId: that._mapId, nodeID: nodeId, value: { question: previousQuestionNodeLabel, answer: answerNodeLabel }, user: 'default', timestamp: Date.now() }
+                that.pushLog(log)
+                Alerts.closeLoadingWindow()
+              }
+            })
           })
         })
       })
@@ -1072,6 +1111,13 @@ class MindmapManager {
     }
     return prompt
   }
+  isRootNode (node) {
+    if (node._info.parent) {
+      return false
+    } else {
+      return true
+    }
+  }
   updateRatedNode (node, rating) {
     console.log(node)
     MindmeisterClient.doActions(this._mapId,
@@ -1136,9 +1182,13 @@ class MindmapManager {
     })
     return hasChildWithChildren
   }
-
   isQuestionNode (node) {
     return MindmapWrapper.hasIcon(node, 'question')
+  }
+  pushLog (log) {
+    chrome.runtime.sendMessage({ scope: 'logManager', cmd: 'pushLog', data: {log: log} }, async (log) => {
+      console.log('new log:', log)
+    })
   }
   initManagers (that) {
     const checkDOM = setInterval(function () {

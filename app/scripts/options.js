@@ -6,6 +6,18 @@ window.$ = $
 const MindmeisterClient = require('./mindmeister/MindmeisterClient')
 const Alerts = require('./utils/Alerts')
 
+document.getElementById('deleteLogs').addEventListener('click', () => {
+  chrome.runtime.sendMessage({ scope: 'logManager', cmd: 'setLogs', data: { logs: [] } }, (logs) => {
+    console.log('Logs deleted:', logs)
+  })
+})
+
+document.getElementById('showLogs').addEventListener('click', () => {
+  chrome.runtime.sendMessage({ scope: 'logManager', cmd: 'getLogs', data: { logs: [] } }, (logs) => {
+    console.log('All Logs:', logs)
+  })
+})
+
 document.getElementById('mindmeisterEnableCheckbox').addEventListener('change', function () {
   var enabled = document.getElementById('mindmeisterEnableCheckbox').checked
   if (enabled) {
