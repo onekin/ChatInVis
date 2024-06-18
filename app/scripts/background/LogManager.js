@@ -15,23 +15,23 @@ class LogManager {
             if (err) {
               sendResponse({ err: err })
             } else {
-              if (logs) {
+              if (logs.data) {
                 try {
-                  logs = JSON.parse(logs)
+                  logs = JSON.parse(logs.data)
                 } catch (e) {
                   logs = []
                 }
-                logs.push(request.data.log)
-                ChromeStorage.setData(searchKey, { data: JSON.stringify(logs) }, ChromeStorage.sync, (err) => {
-                  if (err) {
-                    sendResponse({ err: err })
-                  } else {
-                    sendResponse({ logs: logs || [] })
-                  }
-                })
               } else {
-                sendResponse({ logs: [] })
+                logs = []
               }
+              logs.push(request.data.log)
+              ChromeStorage.setData(searchKey, { data: JSON.stringify(logs) }, ChromeStorage.sync, (err) => {
+                if (err) {
+                  sendResponse({ err: err })
+                } else {
+                  sendResponse({ logs: logs || [] })
+                }
+              })
             }
           })
         } else if (request.cmd === 'getLogs') {
@@ -40,9 +40,9 @@ class LogManager {
             if (err) {
               sendResponse({ err: err })
             } else {
-              if (logs) {
+              if (logs.data) {
                 try {
-                  logs = JSON.parse(logs)
+                  logs = JSON.parse(logs.data)
                 } catch (e) {
                   logs = []
                 }

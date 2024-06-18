@@ -13,8 +13,16 @@ document.getElementById('deleteLogs').addEventListener('click', () => {
 })
 
 document.getElementById('showLogs').addEventListener('click', () => {
-  chrome.runtime.sendMessage({ scope: 'logManager', cmd: 'getLogs', data: { logs: [] } }, (logs) => {
-    console.log('All Logs:', logs)
+  chrome.runtime.sendMessage({ scope: 'logManager', cmd: 'getLogs' }, (data) => {
+    console.log('All Logs:', data.logs)
+  })
+})
+
+document.getElementById('exportLogs').addEventListener('click', () => {
+  chrome.runtime.sendMessage({ scope: 'logManager', cmd: 'getLogs' }, (data) => {
+    console.log('All Logs:', data.logs)
+    const csvData = convertToCSV(data.logs)
+    downloadCSV(csvData, 'export.csv')
   })
 })
 
@@ -169,4 +177,56 @@ function checkNumberOfAuthorsParameter (parameter) {
   } else {
     return false
   }
+}
+
+function convertToCSV(jsonData) {
+  const array = jsonData
+  let headers = new Set()
+  let csvRows = []
+
+  // Function to flatten JSON
+  function flattenJson(obj, prefix = '') {
+    let flattened = {}
+    for (let key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        const newKey = prefix ? `${prefix}.${key}` : key
+        if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+          Object.assign(flattened, flattenJson(obj[key], newKey))
+        } else {
+          flattened[newKey] = obj[key]
+          headers.add(newKey)
+        }
+      }
+    }
+    return flattened
+  }
+
+  // Flatten each JSON object and collect headers
+  array.forEach(item => {
+    const flattenedItem = flattenJson(item)
+    csvRows.push(flattenedItem)
+  })
+
+  // Create CSV header
+  let csvHeader = Array.from(headers).join(',') + '\r\n'
+  let csvData = csvRows.map(row => {
+    return Array.from(headers).map(header => {
+      return row[header] !== undefined ? `"${row[header]}"` : ''
+    }).join(',')
+  }).join('\r\n')
+
+  return csvHeader + csvData
+}
+
+// Function to download CSV
+function downloadCSV(csvData, filename) {
+  const blob = new Blob([csvData], { type: 'text/csv' })
+  const url = window.URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.setAttribute('hidden', '')
+  a.setAttribute('href', url)
+  a.setAttribute('download', filename)
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
 }

@@ -410,12 +410,12 @@ class MindmapManager {
           previousAnswer = parent._info.title.replaceAll('\n', ' ')
         }
         let action
-        if (CheckMapUtils.nodeElementHasRectangleShape(node) && !that.isRootNode(node)) {
+        if (CheckMapUtils.nodeElementHasRectangleShape(node) && !that.isRootNode(questionNode)) {
           action = 'addQuestion'
-        } else if (that.isRootNode(node)) {
-          action = 'selectQuestion'
-        } else {
+        } else if (that.isRootNode(questionNode)) {
           action = 'firstQuestion'
+        } else {
+          action = 'selectQuestion'
         }
         console.log('prompt:\n ' + prompt)
         chrome.runtime.sendMessage({ scope: 'llm', cmd: 'getSelectedLLM' }, async ({ llm }) => {
@@ -498,12 +498,12 @@ class MindmapManager {
           previousAnswer = parent._info.title.replaceAll('\n', ' ')
         }
         let action
-        if (CheckMapUtils.nodeElementHasRectangleShape(node) && !that.isRootNode(node)) {
+        if (CheckMapUtils.nodeElementHasRectangleShape(node._domElement) && !that.isRootNode(questionNode)) {
           action = 'addQuestionWithPDF'
-        } else if (that.isRootNode(node)) {
-          action = 'selectQuestionWithPDF'
-        } else {
+        } else if (that.isRootNode(questionNode)) {
           action = 'firstQuestionWithPDF'
+        } else {
+          action = 'selectQuestionWithPDF'
         }
         console.log('prompt: ' + prompt)
         // Ensure workerSrc is set before loading the document
@@ -798,9 +798,8 @@ class MindmapManager {
             }, (newRatings) => {
               console.log('Rating updated:', ratings[ratingIndex])
               this.updateRatedNode(node, rating)
-              let log = { action: 'editFeedback', mapId: mapID, nodeID: r.nodeID, value: { userAnnotation: userAnnotation, ratingValue: ratingValue, textValue: node._info.title }, user: 'default', timestamp: Date.now() }
+              let log = { action: 'editFeedback', mapId: mapID, nodeID: rating.nodeID, value: { userAnnotation: userAnnotation, ratingValue: ratingValue, textValue: node._info.title }, user: 'default', timestamp: Date.now() }
               this.pushLog(log)
-              /// this.createModelList(models.model)
             })
           }
         }
@@ -974,7 +973,6 @@ class MindmapManager {
         }
         // PROMPT FOR RETRIEVING SUGGESTED QUESTIONS
         chrome.runtime.sendMessage({ scope: 'model', cmd: 'getModels' }, async ({ models }) => {
-          console.log(models)
           const fromModel = (that, nodeId, model) => {
             const modelSuggestedQuestionsPrompt = PromptBuilder.getPromptForModelSuggestedQuestion(this, answerNodeLabel, answerNodeNote, previousQuestionNodeLabel, that._firsQuestion, model)
             return that.retrieveModelSuggestedQuestions(that, nodeId, modelSuggestedQuestionsPrompt, model.name)
@@ -1187,7 +1185,7 @@ class MindmapManager {
   }
   pushLog (log) {
     chrome.runtime.sendMessage({ scope: 'logManager', cmd: 'pushLog', data: {log: log} }, async (log) => {
-      console.log('new log:', log)
+      console.log('new log:', log.logs)
     })
   }
   initManagers (that) {

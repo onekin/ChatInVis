@@ -14,15 +14,16 @@ class CheckMapUtils {
     }
   }
   static nodeElementHasRectangleShape (node) {
-    if (node.parentElement.innerHTML.includes('border-radius: 0px;') && node._domElement.parentElement.innerHTML.includes('padding: 11.4px')) {
+    const style = node.children[0].firstChild.firstChild.style
+    // Check for specific style properties
+    // const hasBorderRadius = style.borderRadius === '0px'
+    const hasPadding = style.padding === '11.4px'
+    if (hasPadding) {
+      // Your code here
       return true
     } else {
       return false
     }
-  }
-  static nodeElementHasCloudShape (node) {
-    // translateX +6
-    // translateY +6
   }
 }
 
