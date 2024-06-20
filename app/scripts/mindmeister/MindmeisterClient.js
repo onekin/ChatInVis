@@ -24,6 +24,14 @@ class MindmeisterClient {
       })
     })
   }
+  static getUserId () {
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage({scope: 'mindmeisterClient', action: 'getUserId'}, (response) => {
+        if (response.response != null) resolve(response.response)
+        else if (response.error != null) reject(response.error)
+      })
+    })
+  }
   static getMap (mapId) {
     return this.processInBackground('getMap', {mapId: mapId})
   }

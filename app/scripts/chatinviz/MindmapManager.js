@@ -309,10 +309,10 @@ class MindmapManager {
                 rating = ratings.find(r => r.mapID === that._mapId && r.nodeID === questionNode.getAttribute('data-id'))
               }
               if (rating) {
-                that.editFeedback(questionNodeObject, that._mapId, rating, ratings)
+                that.editFeedback(questionNodeObject, that._mapId, rating, ratings, that)
                 // You can perform further actions with the found rating here
               } else {
-                that.newFeedback(questionNodeObject, that._mapId, ratings)
+                that.newFeedback(questionNodeObject, that._mapId, ratings, that)
               }
             })
           })
@@ -451,7 +451,7 @@ class MindmapManager {
                   if (response.error) {
                     Alerts.showErrorToast('There was an error adding the nodes to the map')
                   } else {
-                    let log = { action: action, source: source, mapId: that._mapId, nodeID: nodeId, value: {question: question, answer: previousAnswer}, user: 'default', timestamp: Date.now() }
+                    let log = { action: action, source: source, mapId: that._mapId, nodeID: nodeId, value: {question: question, answer: previousAnswer}, user: that._user.id, timestamp: Date.now() }
                     that.pushLog(log)
                     Alerts.closeLoadingWindow()
                     let title = document.querySelectorAll('.plusTitle')
@@ -566,7 +566,7 @@ class MindmapManager {
                           if (response.error) {
                             Alerts.showAlertToast('There was an error adding the nodes to the map')
                           } else {
-                            let log = { action: action, source: source, mapId: that._mapId, nodeID: node.id, value: {question: questionNode._info.title, answer: previousAnswer}, user: 'default', timestamp: Date.now() }
+                            let log = { action: action, source: source, mapId: that._mapId, nodeID: node.id, value: {question: questionNode._info.title, answer: previousAnswer}, user: that._user.id, timestamp: Date.now() }
                             that.pushLog(log)
                             Alerts.closeLoadingWindow()
                           }
@@ -668,7 +668,7 @@ class MindmapManager {
                           } else {
                             Alerts.closeLoadingWindow()
                             let summarizedValues = childrenNodes.map((c) => c._info.title).join(';')
-                            let log = { action: 'summarize', source: source, mapId: that._mapId, nodeID: node.id, value: { summarizedValues: summarizedValues, numberOfItems: number, textValue: node.text }, user: 'default', timestamp: Date.now() }
+                            let log = { action: 'summarize', source: source, mapId: that._mapId, nodeID: node.id, value: { summarizedValues: summarizedValues, numberOfItems: number, textValue: node.text }, user: that._user.id, timestamp: Date.now() }
                             this.pushLog(log)
                           }
                         })
@@ -692,7 +692,7 @@ class MindmapManager {
     }
     console.log(prompt)
   }
-  newFeedback (node, mapID, ratings) {
+  newFeedback (node, mapID, ratings, that) {
     let nodeID = node._info.id
     let source = this.getSource(node)
     let userAnnotation
@@ -732,7 +732,7 @@ class MindmapManager {
         ratings.push(rating)
         chrome.runtime.sendMessage({ scope: 'ratingManager', cmd: 'setRatings', data: { ratings: ratings } }, ({ ratings }) => {
           if (ratings) {
-            let log = { action: 'newFeedback', source: source, mapId: mapID, nodeID: nodeID, value: { userAnnotation: userAnnotation, ratingValue: ratingValue, textValue: node._info.title }, user: 'default', timestamp: Date.now() }
+            let log = { action: 'newFeedback', source: source, mapId: mapID, nodeID: nodeID, value: { userAnnotation: userAnnotation, ratingValue: ratingValue, textValue: node._info.title }, user: that._user.id, timestamp: Date.now() }
             this.pushLog(log)
             this.updateRatedNode(node, rating)
             // update rated node with the new rating
@@ -741,7 +741,7 @@ class MindmapManager {
       }
     })
   }
-  editFeedback (node, mapID, rating, ratings) {
+  editFeedback (node, mapID, rating, ratings, that) {
     let source = this.getSource(node)
     let userAnnotation = rating.userAnnotation
     let ratingValue = rating.ratingValue
@@ -789,7 +789,7 @@ class MindmapManager {
             }, (newRatings) => {
               console.log('Rating updated:', ratings[ratingIndex])
               this.updateRatedNode(node, rating)
-              let log = { action: 'editFeedback', source: source, mapId: mapID, nodeID: rating.nodeID, value: { userAnnotation: userAnnotation, ratingValue: ratingValue, textValue: node._info.title }, user: 'default', timestamp: Date.now() }
+              let log = { action: 'editFeedback', source: source, mapId: mapID, nodeID: rating.nodeID, value: { userAnnotation: userAnnotation, ratingValue: ratingValue, textValue: node._info.title }, user: that._user.id, timestamp: Date.now() }
               this.pushLog(log)
             })
           }
@@ -1002,7 +1002,7 @@ class MindmapManager {
               if (response.error) {
                 Alerts.showErrorToast('There was an error adding the node to the map')
               } else {
-                let log = { action: action, source: source, mapId: that._mapId, nodeID: nodeId, value: { question: previousQuestionNodeLabel, answer: answerNodeLabel }, user: 'default', timestamp: Date.now() }
+                let log = { action: action, source: source, mapId: that._mapId, nodeID: nodeId, value: { question: previousQuestionNodeLabel, answer: answerNodeLabel }, user: that._user.id, timestamp: Date.now() }
                 that.pushLog(log)
                 Alerts.closeLoadingWindow()
               }
@@ -1065,12 +1065,16 @@ class MindmapManager {
     let that = this
     return new Promise((resolve, reject) => {
       MindmeisterClient.getMap(that._mapId).then((mapInfo) => {
-        that._mindmapParser = new MindmapContentParser(mapInfo)
-        let rootNode = that.getRootNode()
-        that._firsQuestion = rootNode._domElement.innerText.replaceAll('\n', ' ')
-        that.parseStyle(() => {
-          // that.parseScopingAnalysis()
-          resolve()
+        MindmeisterClient.getUserId().then((user) => {
+          console.log(user)
+          that._user = user
+          that._mindmapParser = new MindmapContentParser(mapInfo)
+          let rootNode = that.getRootNode()
+          that._firsQuestion = rootNode._domElement.innerText.replaceAll('\n', ' ')
+          that.parseStyle(() => {
+            // that.parseScopingAnalysis()
+            resolve()
+          })
         })
       })
     })
@@ -1228,6 +1232,7 @@ class MindmapManager {
                         source: source,
                         mapId: that._mapId,
                         nodeID: currentNode.dataset.id,
+                        user: that._user.id,
                         value: { textValue: currentNode.textContent }
                       }
                       that.pushLog(log)

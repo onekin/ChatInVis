@@ -25,8 +25,10 @@ class MindmeisterBackground {
       if (message.scope === 'mindmeisterClient') {
         if (message.action === 'checkToken') {
           that.checkToken().then(() => {
-            sendResponse({response: true})
-          }, (error) => sendResponse({error: error}))
+            sendResponse({ response: true })
+          }, (error) => sendResponse({ error: error }))
+        } else if (message.action === 'getUserId') {
+          that.getUserId().then((rsp) => sendResponse({response: rsp}), (error) => sendResponse({error: error}))
         } else if (message.action === 'authorize') {
           that.authorize().then(() => {
             sendResponse({response: true})
@@ -166,7 +168,29 @@ class MindmeisterBackground {
   }
 
   getUserId () {
-    // todo
+    let that = this
+    return new Promise((resolve, reject) => {
+      that.getToken().then((token) => {
+        let items = {
+          access_token: token,
+          method: 'mm.test.login'
+        }
+        let opts = {
+          method: 'GET',
+          url: 'https://www.mindmeister.com/services/rest/oauth2',
+          params: items
+        }
+        Utils.performRequest(opts).then((resp) => resp.json()).then((ret) => {
+          if (ret.rsp.stat !== 'ok') {
+            that.removeToken().then(() => {
+              reject(reject(new Error('error')))
+            })
+          } else resolve(ret.rsp.user)
+        })
+      }, (error) => {
+        reject(error)
+      })
+    })
   }
 
   getMapNo (mapId) {
