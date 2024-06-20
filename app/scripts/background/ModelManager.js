@@ -11,12 +11,12 @@ class ModelManager {
       if (request.scope === 'model') {
         if (request.cmd === 'getModels') {
           let searchKey = 'models'
-          ChromeStorage.getData(searchKey, ChromeStorage.sync, (err, models) => {
+          ChromeStorage.getData(searchKey, ChromeStorage.local, (err, models) => {
             if (err) {
               sendResponse({ err: err })
             } else {
-              if (models && models.data) {
-                let parsedModels = JSON.parse(models.data)
+              if (models) {
+                let parsedModels = JSON.parse(models)
                 sendResponse({ models: parsedModels || [] })
               } else {
                 sendResponse({ models: [] })
@@ -26,7 +26,7 @@ class ModelManager {
         } else if (request.cmd === 'setModels') {
           let searchKey = 'models'
           let models = request.data.models
-          ChromeStorage.setData(searchKey, { data: JSON.stringify(models) }, ChromeStorage.sync, (err) => {
+          ChromeStorage.setData(searchKey, JSON.stringify(models), ChromeStorage.local, (err) => {
             if (err) {
               sendResponse({ err: err })
             } else {

@@ -49,6 +49,7 @@
     "webRequest",
     "declarativeNetRequest",
     "identity",
+    "unlimitedStorage",
     "https://api.anthropic.com/*",
     "https://api.anthropic.com",
     "clipboardWrite",

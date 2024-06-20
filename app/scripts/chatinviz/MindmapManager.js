@@ -122,7 +122,7 @@ class MindmapManager {
       currentRatedNodes.forEach((r) => {
         if (r.userAnnotation && r.userAnnotation !== '') {
           let node = MindmapWrapper.getNodeById(r.nodeID)
-          if (!node._domElement.classList.contains('userAnnotationTag')) {
+          if (node && node._domElement && !node._domElement.classList.contains('userAnnotationTag')) {
             let nodeTitleDiv = node._domElement.querySelector('.node-title')
             if (nodeTitleDiv) {
               var nextSibling = nodeTitleDiv.nextElementSibling // This gets the next sibling element
@@ -166,7 +166,6 @@ class MindmapManager {
       if (nodeTitleDiv) {
         var nextSibling = nodeTitleDiv.nextElementSibling // This gets the next sibling element
         if (nextSibling) {
-          console.log('Next sibling element:', nextSibling)
           var duplicate = nextSibling.cloneNode(true)
           // Add the class 'userAnnotationTag'
           if (!node._domElement.classList.contains('userAnnotationTag')) {
@@ -177,7 +176,6 @@ class MindmapManager {
           child.style.backgroundColor = PromptStyles[r.ratingValue].borderColor
           // Add a click listener to the duplicated element
           duplicate.addEventListener('click', function () {
-            console.log('Duplicated element clicked')
             // Additional actions can be performed here on click
             const selector = '#modal_' + r.nodeID
             let currentModal = nodeTitleDiv.querySelector(selector)
@@ -190,8 +188,6 @@ class MindmapManager {
           // Insert the duplicate into the DOM, after the original nextSibling
           nextSibling.parentNode.insertBefore(duplicate, nextSibling.nextSibling)
           // You can now work with the next sibling element
-        } else {
-          console.log('No next sibling element found.')
         }
       }
     }
@@ -304,7 +300,6 @@ class MindmapManager {
         // Insert the duplicate after the original div
         div.parentNode.insertBefore(userFeedbackButton, div.nextSibling)
         userFeedbackButton.addEventListener('click', function (event) {
-          console.log('click on userFeedbackButton')
           that.parseMap().then(() => {
             let questionNodeObject = that._mindmapParser.getNodeById(questionNode.getAttribute('data-id'))
             chrome.runtime.sendMessage({ scope: 'ratingManager', cmd: 'getRatings' }, (data) => { // Find a rating that matches the mapID and nodeID
@@ -314,12 +309,10 @@ class MindmapManager {
                 rating = ratings.find(r => r.mapID === that._mapId && r.nodeID === questionNode.getAttribute('data-id'))
               }
               if (rating) {
-                console.log('Rating found:', rating)
                 that.editFeedback(questionNodeObject, that._mapId, rating, ratings)
                 // You can perform further actions with the found rating here
               } else {
                 that.newFeedback(questionNodeObject, that._mapId, ratings)
-                console.log('No rating found for the specified mapID and nodeID')
               }
             })
           })
@@ -352,7 +345,6 @@ class MindmapManager {
     // Get position of cloud nodes
     let dataIds = that.getCloudIds()
     let cloudNodes = dataIds.map(id => MindmapWrapper.getNodeById(id)).filter(node => node !== null)
-    console.log(cloudNodes)
     return cloudNodes
   }
   getCloudIds () {
@@ -372,7 +364,6 @@ class MindmapManager {
           return null
         })
         .filter(coords => coords !== null)
-      console.log(cloudsCoordinates)
       // Find corresponding divs based on the cloud node positions and extract data-id attributes
       let dataIds = cloudsCoordinates.map(node => {
         const xTransform = node.x - 6
@@ -409,13 +400,16 @@ class MindmapManager {
           const parent = that._mindmapParser.getNodeById(questionNode._info.parent)
           previousAnswer = parent._info.title.replaceAll('\n', ' ')
         }
-        let action
+        let action, source
         if (CheckMapUtils.nodeElementHasRectangleShape(node) && !that.isRootNode(questionNode)) {
-          action = 'addQuestion'
+          action = 'selectQuestion'
+          source = 'User'
         } else if (that.isRootNode(questionNode)) {
           action = 'firstQuestion'
+          source = 'User'
         } else {
           action = 'selectQuestion'
+          source = that.getSource(questionNode)
         }
         console.log('prompt:\n ' + prompt)
         chrome.runtime.sendMessage({ scope: 'llm', cmd: 'getSelectedLLM' }, async ({ llm }) => {
@@ -439,7 +433,7 @@ class MindmapManager {
                     style: PromptStyles.SystemAnswerItem,
                     image: IconsMap['magnifier'],
                     parentId: nodeId,
-                    note: c.description + '\n\n<b>Source: ' + llm + '</b>'
+                    note: c.description + '\n\n<b>Source:Model:' + llm + '</b>'
                   }
                 })
                 nodes = gptItemsNodes
@@ -450,14 +444,14 @@ class MindmapManager {
                     style: PromptStyles.UserAnswerItem,
                     image: IconsMap['magnifier'],
                     parentId: nodeId,
-                    note: '<b>Answer from User</b>'
+                    note: '<b>Source:User</b>'
                   })
                 }
                 MindmeisterClient.addNodes(that._mapId, nodes).then((response) => {
                   if (response.error) {
                     Alerts.showErrorToast('There was an error adding the nodes to the map')
                   } else {
-                    let log = { action: action, mapId: that._mapId, nodeID: nodeId, value: {question: question, answer: previousAnswer}, user: 'default', timestamp: Date.now() }
+                    let log = { action: action, source: source, mapId: that._mapId, nodeID: nodeId, value: {question: question, answer: previousAnswer}, user: 'default', timestamp: Date.now() }
                     that.pushLog(log)
                     Alerts.closeLoadingWindow()
                     let title = document.querySelectorAll('.plusTitle')
@@ -498,12 +492,16 @@ class MindmapManager {
           previousAnswer = parent._info.title.replaceAll('\n', ' ')
         }
         let action
+        let source
         if (CheckMapUtils.nodeElementHasRectangleShape(node._domElement) && !that.isRootNode(questionNode)) {
-          action = 'addQuestionWithPDF'
+          source = 'User'
+          action = 'selectQuestionWithPDF'
         } else if (that.isRootNode(questionNode)) {
           action = 'firstQuestionWithPDF'
+          source = 'User'
         } else {
           action = 'selectQuestionWithPDF'
+          source = that.getSource(questionNode)
         }
         console.log('prompt: ' + prompt)
         // Ensure workerSrc is set before loading the document
@@ -550,7 +548,7 @@ class MindmapManager {
                             style: PromptStyles.SystemAnswerItem,
                             image: IconsMap['magnifier'],
                             parentId: node.id,
-                            note: c.description + '\n\n <b>Source: ' + name + ':</b>\n' + c.excerpt,
+                            note: c.description + '\n\n <b>Source:PDF:' + name + ':</b>\n' + c.excerpt,
                             attachment: id
                           }
                         })
@@ -561,14 +559,14 @@ class MindmapManager {
                             style: PromptStyles.UserAnswerItem,
                             image: IconsMap['magnifier'],
                             parentId: node.id,
-                            note: '<b>Answer from User</b>'
+                            note: '<b>Source:User</b>'
                           })
                         }
                         MindmeisterClient.addNodes(that._mapId, nodes).then((response) => {
                           if (response.error) {
                             Alerts.showAlertToast('There was an error adding the nodes to the map')
                           } else {
-                            let log = { action: action, mapId: that._mapId, nodeID: node.id, value: {question: questionNode._info.title, answer: previousAnswer}, user: 'default', timestamp: Date.now() }
+                            let log = { action: action, source: source, mapId: that._mapId, nodeID: node.id, value: {question: questionNode._info.title, answer: previousAnswer}, user: 'default', timestamp: Date.now() }
                             that.pushLog(log)
                             Alerts.closeLoadingWindow()
                           }
@@ -608,6 +606,7 @@ class MindmapManager {
   performSummarizationQuestion (node, type) {
     Alerts.showLoadingWindow('Creating prompt...')
     let that = this
+    let source = that.getSource(node)
     let prompt = ''
     let childrenNodes = node.children
     if (childrenNodes.length > 2) {
@@ -650,7 +649,7 @@ class MindmapManager {
                         style: style,
                         image: icon,
                         parentId: node.id,
-                        note: c.description
+                        note: c.description + '\n\n<b>Source:Summarized</b>'
                       }
                     })
                     nodes = gptProblemsNodes
@@ -668,18 +667,9 @@ class MindmapManager {
                             Alerts.showAlertToast('There was an error adding the nodes to the map')
                           } else {
                             Alerts.closeLoadingWindow()
-                            let title = document.querySelectorAll('.plusTitle')
-                            if (title) {
-                              title.forEach((t) => {
-                                t.remove()
-                              })
-                            }
-                            let title2 = document.querySelectorAll('.plusTitleOwn')
-                            if (title2) {
-                              title2.forEach((t) => {
-                                t.remove()
-                              })
-                            }
+                            let summarizedValues = childrenNodes.map((c) => c._info.title).join(';')
+                            let log = { action: 'summarize', source: source, mapId: that._mapId, nodeID: node.id, value: { summarizedValues: summarizedValues, numberOfItems: number, textValue: node.text }, user: 'default', timestamp: Date.now() }
+                            this.pushLog(log)
                           }
                         })
                       }
@@ -704,6 +694,7 @@ class MindmapManager {
   }
   newFeedback (node, mapID, ratings) {
     let nodeID = node._info.id
+    let source = this.getSource(node)
     let userAnnotation
     let ratingValue
     let html = '<div>' + '<span style="text-align: left;">Rating ' + node._info.title + '</span>' +
@@ -711,7 +702,7 @@ class MindmapManager {
       '<span style="text-align: left;">User Annotation</span>' +
       '<textarea id="userAnnotation" class="swal2-input customizeInput" placeholder="Provide your feedback"></textarea>' +
       '</div>'
-    html += '<span style="text-align:left">Rating (1-5):</span><input type="number" min="1" max="5" id="ratingValue" class="swal2-input customizeInput" placeholder="Rate the node"></input></div>'
+    html += '<span style="text-align:left">Rating (0 Stronly disagree - 4 Strongly agree):</span><input type="number" min="0" max="4" id="ratingValue" class="swal2-input customizeInput" placeholder="Rate the node"></input></div>'
     Alerts.threeOptionsAlert({
       title: 'Creating feedback',
       html: html,
@@ -729,7 +720,7 @@ class MindmapManager {
           const swal = require('sweetalert2')
           swal.showValidationMessage('Please provide a rating.') // This will display an error message in the SweetAlert
           return false // Prevents the alert from closing
-        } else if (ratingValue < 1 || ratingValue > 5) {
+        } else if (ratingValue < 0 || ratingValue > 4) {
           const swal = require('sweetalert2')
           swal.showValidationMessage('Please provide a rating between 1 and 5.') // This will display an error message in the SweetAlert
           return false // Prevents the alert from closing
@@ -741,8 +732,7 @@ class MindmapManager {
         ratings.push(rating)
         chrome.runtime.sendMessage({ scope: 'ratingManager', cmd: 'setRatings', data: { ratings: ratings } }, ({ ratings }) => {
           if (ratings) {
-            console.log('Ratings updated:', ratings)
-            let log = { action: 'newFeedback', mapId: mapID, nodeID: nodeID, value: { userAnnotation: userAnnotation, ratingValue: ratingValue, textValue: node._info.title }, user: 'default', timestamp: Date.now() }
+            let log = { action: 'newFeedback', source: source, mapId: mapID, nodeID: nodeID, value: { userAnnotation: userAnnotation, ratingValue: ratingValue, textValue: node._info.title }, user: 'default', timestamp: Date.now() }
             this.pushLog(log)
             this.updateRatedNode(node, rating)
             // update rated node with the new rating
@@ -752,6 +742,7 @@ class MindmapManager {
     })
   }
   editFeedback (node, mapID, rating, ratings) {
+    let source = this.getSource(node)
     let userAnnotation = rating.userAnnotation
     let ratingValue = rating.ratingValue
     let html = '<div>' + '<span style="text-align: left;">Rating ' + node._info.title.replaceAll('\n', ' ') + '</span>' +
@@ -798,7 +789,7 @@ class MindmapManager {
             }, (newRatings) => {
               console.log('Rating updated:', ratings[ratingIndex])
               this.updateRatedNode(node, rating)
-              let log = { action: 'editFeedback', mapId: mapID, nodeID: rating.nodeID, value: { userAnnotation: userAnnotation, ratingValue: ratingValue, textValue: node._info.title }, user: 'default', timestamp: Date.now() }
+              let log = { action: 'editFeedback', source: source, mapId: mapID, nodeID: rating.nodeID, value: { userAnnotation: userAnnotation, ratingValue: ratingValue, textValue: node._info.title }, user: 'default', timestamp: Date.now() }
               this.pushLog(log)
             })
           }
@@ -832,7 +823,7 @@ class MindmapManager {
                   style: PromptStyles.SystemQuestionItem,
                   image: IconsMap['question'],
                   parentId: nodeId,
-                  note: c.description + '\n\n<b>Source: ' + llm + '</b>'
+                  note: c.description + '\n\n<b>Source:Model:' + llm + '</b>'
                 }
               })
               resolve(gptItemsNodes)
@@ -871,7 +862,7 @@ class MindmapManager {
                   style: PromptStyles.SystemQuestionItem,
                   image: IconsMap['question'],
                   parentId: nodeId,
-                  note: c.description + '\n\n<b>Source: ' + modelName + '</b>'
+                  note: c.description + '\n\n<b>Source:Model:' + modelName + '</b>'
                 }
               })
               resolve(gptItemsNodes)
@@ -918,7 +909,7 @@ class MindmapManager {
       let name = Utils.findValuesEndingWithName(item, 'name')
       let description = item.description + '\n'
       Array.from(item.clusteredItems).forEach((clusteredItem) => {
-        description += '\n<strong>' + clusteredItem.node_name + '</strong>: ' + clusteredItem.description
+        description += '<br><strong>' + clusteredItem.question_name + '</strong>: ' + clusteredItem.description + '<br>'
       })
       clusterNodes.push({ label: name, description: description })
     })
@@ -966,11 +957,8 @@ class MindmapManager {
           }
         }
         let action
-        if (CheckMapUtils.nodeElementHasRectangleShape(node)) {
-          action = 'addAnswer'
-        } else {
-          action = 'selectAnswer'
-        }
+        let source = that.getSource(answerNode)
+        action = 'selectAnswer'
         // PROMPT FOR RETRIEVING SUGGESTED QUESTIONS
         chrome.runtime.sendMessage({ scope: 'model', cmd: 'getModels' }, async ({ models }) => {
           const fromModel = (that, nodeId, model) => {
@@ -1014,7 +1002,7 @@ class MindmapManager {
               if (response.error) {
                 Alerts.showErrorToast('There was an error adding the node to the map')
               } else {
-                let log = { action: action, mapId: that._mapId, nodeID: nodeId, value: { question: previousQuestionNodeLabel, answer: answerNodeLabel }, user: 'default', timestamp: Date.now() }
+                let log = { action: action, source: source, mapId: that._mapId, nodeID: nodeId, value: { question: previousQuestionNodeLabel, answer: answerNodeLabel }, user: 'default', timestamp: Date.now() }
                 that.pushLog(log)
                 Alerts.closeLoadingWindow()
               }
@@ -1117,7 +1105,6 @@ class MindmapManager {
     }
   }
   updateRatedNode (node, rating) {
-    console.log(node)
     MindmeisterClient.doActions(this._mapId,
       [],
       [{id: node._info.id, style: PromptStyles[rating.ratingValue]}]
@@ -1180,6 +1167,19 @@ class MindmapManager {
     })
     return hasChildWithChildren
   }
+  getSource (node) {
+    let note = node._info.note
+    if (note) {
+      if (note.includes('Source:Summarized')) {
+        return 'Summarized'
+      } else {
+        let source = note.match(/Source:([^\n]+)/)
+        if (source) {
+          return source[1].replace(/\s+/g, '').replace('</b>', '')
+        }
+      }
+    }
+  }
   isQuestionNode (node) {
     return MindmapWrapper.hasIcon(node, 'question')
   }
@@ -1214,6 +1214,25 @@ class MindmapManager {
                 } else if (node.innerText && (node.innerText.includes('Drag & drop files') || node.innerText.includes('Arrastra y suelta archivos o pega enlaces en los temas.'))) {
                   // Extend the context menu of nodes
                   that.manageContextMenu(that)
+                }
+                if (node.nodeType === Node.ELEMENT_NODE && typeof node.querySelector === 'function') {
+                  const mdEditorRoot = node.querySelector('.md-editor__root.editable')
+                  if (mdEditorRoot) {
+                    // This is the node you're looking for
+                    let currentNode = that.getCurrentNode()
+                    that.parseMap().then(() => {
+                      let questionNodeObject = that._mindmapParser.getNodeById(currentNode.getAttribute('data-id'))
+                      let source = that.getSource(questionNodeObject)
+                      let log = {
+                        action: 'consultNote',
+                        source: source,
+                        mapId: that._mapId,
+                        nodeID: currentNode.dataset.id,
+                        value: { textValue: currentNode.textContent }
+                      }
+                      that.pushLog(log)
+                    })
+                  }
                 }
               }
             }

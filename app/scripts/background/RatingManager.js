@@ -11,14 +11,14 @@ class RatingManager {
       if (request.scope === 'ratingManager') {
         if (request.cmd === 'setRating') {
           let searchKey = 'ratings'
-          ChromeStorage.getData(searchKey, ChromeStorage.sync, (err, ratings) => {
+          ChromeStorage.getData(searchKey, ChromeStorage.local, (err, ratings) => {
             if (err) {
               sendResponse({ err: err })
             } else {
               if (ratings && ratings.data) {
                 let parsedRatings = JSON.parse(ratings.data)
                 parsedRatings.push(request.data.rating)
-                ChromeStorage.setData(searchKey, { data: JSON.stringify(ratings) }, ChromeStorage.sync, (err) => {
+                ChromeStorage.setData(searchKey, JSON.stringify(ratings), ChromeStorage.local, (err) => {
                   if (err) {
                     sendResponse({ err: err })
                   } else {
@@ -32,12 +32,12 @@ class RatingManager {
           })
         } else if (request.cmd === 'getRatings') {
           let searchKey = 'ratings'
-          ChromeStorage.getData(searchKey, ChromeStorage.sync, (err, ratings) => {
+          ChromeStorage.getData(searchKey, ChromeStorage.local, (err, ratings) => {
             if (err) {
               sendResponse({ err: err })
             } else {
-              if (ratings && ratings.data) {
-                let parsedRatings = JSON.parse(ratings.data)
+              if (ratings) {
+                let parsedRatings = JSON.parse(ratings)
                 sendResponse({ ratings: parsedRatings || [] })
               } else {
                 sendResponse({ ratings: [] })
@@ -47,7 +47,7 @@ class RatingManager {
         } else if (request.cmd === 'setRatings') {
           let searchKey = 'ratings'
           let ratings = request.data.ratings
-          ChromeStorage.setData(searchKey, { data: JSON.stringify(ratings) }, ChromeStorage.sync, (err) => {
+          ChromeStorage.setData(searchKey, JSON.stringify(ratings), ChromeStorage.local, (err) => {
             if (err) {
               sendResponse({ err: err })
             } else {

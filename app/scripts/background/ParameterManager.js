@@ -11,12 +11,12 @@ class ParameterManager {
       if (request.scope === 'parameters') {
         if (request.cmd === 'getParameters') {
           let searchKey = 'parameters'
-          ChromeStorage.getData(searchKey, ChromeStorage.sync, (err, parameters) => {
+          ChromeStorage.getData(searchKey, ChromeStorage.local, (err, parameters) => {
             if (err) {
               sendResponse({ err: err })
             } else {
-              if (parameters && parameters.data) {
-                let parsedParameters = JSON.parse(parameters.data)
+              if (parameters) {
+                let parsedParameters = JSON.parse(parameters)
                 sendResponse({parameters: parsedParameters || { followUpQuestion: true, userProvidedAnswer: true, suggestQuestionsByLLM: true, showSource: true }})
               } else {
                 sendResponse({parameters: { followUpQuestion: true, userProvidedAnswer: true, suggestQuestionsByLLM: true, showSource: true }})
@@ -26,12 +26,12 @@ class ParameterManager {
         } else if (request.cmd === 'getParameter') {
           let type = request.data.type
           let searchKey = 'parameters' + type
-          ChromeStorage.getData(searchKey, ChromeStorage.sync, (err, parameters) => {
+          ChromeStorage.getData(searchKey, ChromeStorage.local, (err, parameters) => {
             if (err) {
               sendResponse({ err: err })
             } else {
-              if (parameters && parameters.data) {
-                let parsedParameter = JSON.parse(parameters.data).type
+              if (parameters) {
+                let parsedParameter = JSON.parse(parameters).type
                 sendResponse({ parameter: parsedParameter || '' })
               } else {
                 sendResponse({ parameter: true })
@@ -41,7 +41,7 @@ class ParameterManager {
         } else if (request.cmd === 'setParameters') {
           let parameters = request.data.parameters
           let searchKey = 'parameters'
-          ChromeStorage.setData(searchKey, { data: JSON.stringify(parameters) }, ChromeStorage.sync, (err) => {
+          ChromeStorage.setData(searchKey, JSON.stringify(parameters), ChromeStorage.local, (err) => {
             if (err) {
               sendResponse({ err: err })
             } else {
@@ -56,12 +56,12 @@ class ParameterManager {
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (request.scope === 'parameterManager') {
         if (request.cmd === 'getNumberOfAuthorsParameter') {
-          ChromeStorage.getData('parameters.numberOfAuthors', ChromeStorage.sync, (err, parameter) => {
+          ChromeStorage.getData('parameters.numberOfAuthors', ChromeStorage.local, (err, parameter) => {
             if (err) {
               sendResponse({ err: err })
             } else {
-              if (parameter && parameter.data) {
-                parameter = JSON.parse(parameter.data)
+              if (parameter) {
+                parameter = JSON.parse(parameter)
                 sendResponse({ parameter: parameter || 3 })
               } else {
                 sendResponse({ parameter: 3 })
@@ -70,7 +70,7 @@ class ParameterManager {
           })
         } else if (request.cmd === 'setNumberOfAuthorsParameter') {
           let numberOfAuthorsParameter = request.data.numberOfAuthorsParameter
-          ChromeStorage.setData('parameters.numberOfAuthors', { data: JSON.stringify(numberOfAuthorsParameter) }, ChromeStorage.sync, (err) => {
+          ChromeStorage.setData('parameters.numberOfAuthors', JSON.stringify(numberOfAuthorsParameter), ChromeStorage.local, (err) => {
             if (err) {
               sendResponse({ err: err })
             } else {

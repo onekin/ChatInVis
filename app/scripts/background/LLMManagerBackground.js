@@ -17,12 +17,12 @@ class LLMManagerBackground {
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (request.scope === 'llm') {
         if (request.cmd === 'getSelectedLLM') {
-          ChromeStorage.getData('llm.selected', ChromeStorage.sync, (err, llm) => {
+          ChromeStorage.getData('llm.selected', ChromeStorage.local, (err, llm) => {
             if (err) {
               sendResponse({ err: err })
             } else {
-              if (llm && llm.data) {
-                let parsedLLM = JSON.parse(llm.data)
+              if (llm) {
+                let parsedLLM = JSON.parse(llm)
                 sendResponse({ llm: parsedLLM || '' })
               } else {
                 sendResponse({ llm: '' })
@@ -31,7 +31,8 @@ class LLMManagerBackground {
           })
         } else if (request.cmd === 'setSelectedLLM') {
           let selectedLLM = request.data.llm
-          ChromeStorage.setData('llm.selected', { data: JSON.stringify(selectedLLM) }, ChromeStorage.sync, (err) => {
+          selectedLLM = JSON.stringify(selectedLLM)
+          ChromeStorage.setData('llm.selected', selectedLLM, ChromeStorage.local, (err) => {
             if (err) {
               sendResponse({ err: err })
             } else {
@@ -40,12 +41,12 @@ class LLMManagerBackground {
           })
         } else if (request.cmd === 'getAPIKEY') {
           let llmKey = 'llm.' + request.data + 'key'
-          ChromeStorage.getData(llmKey, ChromeStorage.sync, (err, apiKey) => {
+          ChromeStorage.getData(llmKey, ChromeStorage.local, (err, apiKey) => {
             if (err) {
               sendResponse({ err: err })
             } else {
               if (apiKey) {
-                let parsedKey = JSON.parse(apiKey.data)
+                let parsedKey = JSON.parse(apiKey)
                 sendResponse({ apiKey: parsedKey || '' })
               } else {
                 sendResponse({ apiKey: '' })
@@ -55,7 +56,8 @@ class LLMManagerBackground {
         } else if (request.cmd === 'setAPIKEY') {
           let llm = 'llm.' + request.data.llm + 'key'
           let apiKey = request.data.apiKey
-          ChromeStorage.setData(llm, { data: JSON.stringify(apiKey) }, ChromeStorage.sync, (err) => {
+          apiKey = JSON.stringify(apiKey)
+          ChromeStorage.setData(llm, apiKey, ChromeStorage.local, (err) => {
             if (err) {
               sendResponse({ err: err })
             } else {
