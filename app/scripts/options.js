@@ -5,6 +5,7 @@ window.$ = $
 
 const MindmeisterClient = require('./mindmeister/MindmeisterClient')
 const Alerts = require('./utils/Alerts')
+const FileUtils = require('./utils/FileUtils')
 
 document.getElementById('deleteLogs').addEventListener('click', () => {
   chrome.runtime.sendMessage({ scope: 'logManager', cmd: 'setLogs', data: { logs: [] } }, (logs) => {
@@ -26,6 +27,45 @@ document.getElementById('exportLogs').addEventListener('click', () => {
   })
 })
 
+document.getElementById('exportLogsJson').addEventListener('click', () => {
+  chrome.runtime.sendMessage({ scope: 'logManager', cmd: 'getLogs' }, (data) => {
+    console.log('All Logs:', data.logs)
+    const logs = JSON.stringify(data.logs)
+    downloadJSON(logs, 'export.json')
+  })
+})
+
+document.getElementById('importLogsJson').addEventListener('click', () => {
+  Alerts.inputTextAlert({
+    title: 'Upload your configuration file',
+    html: 'Here you can import your json file with the logs.',
+    input: 'file',
+    callback: (err, file) => {
+      if (err) {
+        window.alert('An unexpected error happened when trying to load the alert.')
+      } else {
+        FileUtils.readJSONFile(file, (err, jsonObject) => {
+          if (err) {
+            console.error('Error parsing JSON file:', err)
+          } else {
+            try {
+              chrome.runtime.sendMessage({
+                scope: 'logManager',
+                cmd: 'setLogs',
+                data: { logs: jsonObject }
+              }, (response) => {
+                console.log('Logs imported:', response.logs)
+              })
+            } catch (error) {
+              console.error('Error parsing JSON file:', error)
+            }
+          }
+        })
+      }
+    }
+  })
+})
+
 document.getElementById('mindmeisterEnableCheckbox').addEventListener('change', function () {
   var enabled = document.getElementById('mindmeisterEnableCheckbox').checked
   if (enabled) {
@@ -39,16 +79,6 @@ document.getElementById('mindmeisterEnableCheckbox').addEventListener('change', 
     }).catch((error) => {
       Alerts.showErrorToast(error.message)
     })
-  }
-})
-
-document.querySelector('#numberOfAuthorsParameterButton').addEventListener('click', () => {
-  let currentValue = document.querySelector('#numberOfAuthorsParameterInput').value
-  let messageLabel = document.querySelector('#numberOfAuthorsParameterMessage')
-  if (checkNumberOfAuthorsParameter(currentValue)) {
-    setNumberOfAuthorsParameter(currentValue, messageLabel)
-  } else {
-    messageLabel.innerHTML = 'Invalid parameter'
   }
 })
 
@@ -75,15 +105,6 @@ if (window.location.href.includes('pages/options.html')) {
   chrome.runtime.sendMessage({ scope: 'llm', cmd: 'getSelectedLLM' }, ({ llm = defaultLLM }) => {
     document.querySelector('#LLMDropdown').value = llm || defaultLLM
     showSelectedLLMConfiguration(llm || defaultLLM)
-  })
-
-  chrome.runtime.sendMessage({ scope: 'parameterManager', cmd: 'getNumberOfAuthorsParameter' }, ({ parameter }) => {
-    if (parameter && parameter !== '') {
-      document.querySelector('#numberOfAuthorsParameterInput').value = parameter
-    } else {
-      document.querySelector('#numberOfAuthorsParameterInput').value = 3
-      setNumberOfAuthorsParameter(3)
-    }
   })
 
   // Get all the buttons with the same class name
@@ -158,27 +179,6 @@ function setAPIKey (selectedLLM, apiKey) {
   })
 }
 
-function setNumberOfAuthorsParameter (numberOfAuthorsParameter, messageLabel) {
-  chrome.runtime.sendMessage({
-    scope: 'parameterManager',
-    cmd: 'setNumberOfAuthorsParameter',
-    data: {numberOfAuthorsParameter: numberOfAuthorsParameter}
-  }, ({numberOfAuthorsParameter}) => {
-    console.debug('setNumberOfAuthorsParameter ' + numberOfAuthorsParameter)
-    if (messageLabel) {
-      messageLabel.innerHTML = 'Value saved'
-    }
-  })
-}
-
-function checkNumberOfAuthorsParameter (parameter) {
-  if (parameter <= 10) {
-    return true
-  } else {
-    return false
-  }
-}
-
 function convertToCSV (jsonData) {
   const array = jsonData
   let headers = new Set()
@@ -221,6 +221,19 @@ function convertToCSV (jsonData) {
 // Function to download CSV
 function downloadCSV (csvData, filename) {
   const blob = new Blob([csvData], { type: 'text/csv' })
+  const url = window.URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.setAttribute('hidden', '')
+  a.setAttribute('href', url)
+  a.setAttribute('download', filename)
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+}
+
+// Function to download CSV
+function downloadJSON (data, filename) {
+  const blob = new Blob([data], { type: 'text/json' })
   const url = window.URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.setAttribute('hidden', '')

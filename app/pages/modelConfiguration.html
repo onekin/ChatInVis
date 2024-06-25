@@ -6,6 +6,18 @@
     <title>Configuration Page</title>
     <script src="../scripts/modelsConfiguration.js"></script>
     <style>
+        :root {
+            --primary-color: #4A90E2;
+            --secondary-color: #50E3C2;
+            --background-color: #f0f4f8;
+            --card-background-color: #ffffff;
+            --text-color: #333;
+            --border-color: #e6e6e6;
+            --input-background: #f9f9f9;
+            --button-background: var(--primary-color);
+            --button-color: #fff;
+            --input-border: #ddd;
+        }
         body {
             font-family: Arial, sans-serif;
             display: flex;
@@ -13,12 +25,17 @@
             align-items: center;
             margin: 0;
             padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
         }
         header {
-            background: #ddd;
+            background: var(--primary-color);
             width: 100%;
-            padding: 10px;
+            padding: 20px;
             text-align: center;
+            color: #fff;
+            font-size: 1.5em;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         .main {
             display: flex;
@@ -27,22 +44,35 @@
             margin-top: 20px;
         }
         .models, .content {
-            background: #f4f4f4; /* Adjust the background color specifically for content if needed */
-            padding: 10px;
+            background: var(--card-background-color);
+            padding: 20px;
             width: 100%;
-        }
-        .content {
-            background: #fff; /* Specific background for .content */
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
         }
         .input-row {
             display: flex;
             align-items: center;
-            width: 100%; /* Ensures the row takes full width */
+            width: 100%;
         }
-        .input-field, .add-button {
-            flex: 1; /* Allocates equal space to both elements */
+        .input-field {
+            flex: 1;
             padding: 10px;
-            margin: 2px; /* Small margin for visual separation */
+            margin: 2px;
+            background-color: var(--input-background);
+            border: 1px solid var(--input-border);
+            border-radius: 4px;
+        }
+        .add-button {
+            flex: 0;
+            padding: 10px 20px;
+            margin: 2px;
+            background-color: var(--button-background);
+            color: var(--button-color);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
         }
         .model-list, ul {
             margin: 10px 0;
@@ -50,8 +80,8 @@
             list-style: none;
         }
         .model-list li, ul li {
-            padding: 8px;
-            border-bottom: 1px solid #ddd;
+            padding: 12px 8px;
+            border-bottom: 1px solid var(--border-color);
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -59,10 +89,13 @@
         .model-list li:last-child, ul li:last-child {
             border-bottom: none;
         }
-        .button, .add-button {
-            background: #ccc;
+        .button {
+            background: var(--secondary-color);
             border: none;
             cursor: pointer;
+            padding: 8px 12px;
+            border-radius: 4px;
+            color: var(--button-color);
         }
         .checkbox {
             margin-right: 10px;
@@ -71,6 +104,9 @@
             display: flex;
             align-items: center;
             flex-grow: 1;
+        }
+        h2 {
+            color: var(--primary-color);
         }
     </style>
 </head>
@@ -89,10 +125,16 @@
     <div class="content">
         <h2>Options</h2>
         <ul>
-            <li><label><input id="followUpQuestion" type="checkbox"> Follow up question</label></li>
-            <li><label><input id="userProvidedAnswer" type="checkbox"> User provided answer</label></li>
-            <li><label><input id="suggestQuestionsByLLM" type="checkbox"> Suggest questions by LLM</label></li>
-            <!-- <li><label><input id="showSource" type="checkbox"> Show source of question</label></li> -->
+            <li><label><input id="followUpQuestion" type="checkbox" class="checkbox"> Follow up question</label></li>
+            <li><label><input id="userProvidedAnswer" type="checkbox" class="checkbox"> User provided answer</label></li>
+            <li><label><input id="suggestQuestionsByLLM" type="checkbox" class="checkbox"> Suggest items by LLM</label></li>
+            <li><label><input id="allowSystemLogging" type="checkbox" class="checkbox"> Allow system logging</label></li>
+            <li><label><input id="suggestItemsByLogs" type="checkbox" class="checkbox"> Suggest items by Logs</label></li>
+
+            <li><label>LLM suggested items: <input id="llmSuggestedItems" type="number" class="number-input" min="0" max="10" value="0"></label></li>
+
+            <li><label>System suggested items: <input id="systemSuggestedItems" type="number" class="number-input" min="0" max="10" value="0"></label></li>
+            <!-- <li><label><input id="showSource" type="checkbox" class="checkbox"> Show source of question</label></li> -->
         </ul>
     </div>
 </div>

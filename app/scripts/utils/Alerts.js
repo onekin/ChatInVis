@@ -24,6 +24,36 @@ class Alerts {
     })
   }
 
+  static inputTextAlert ({title, input = 'text', type, inputPlaceholder = '', inputValue = '', preConfirm, cancelCallback, showCancelButton = true, html = '', callback}) {
+    Alerts.tryToLoadSwal()
+    if (_.isNull(swal)) {
+      if (_.isFunction(callback)) {
+        callback(new Error('Unable to load swal'))
+      }
+    } else {
+      swal.fire({
+        title: title,
+        input: input,
+        inputPlaceholder: inputPlaceholder,
+        inputValue: inputValue,
+        html: html,
+        type: type,
+        preConfirm: preConfirm,
+        showCancelButton: showCancelButton
+      }).then((result) => {
+        if (result.value) {
+          if (_.isFunction(callback)) {
+            callback(null, result.value)
+          }
+        } else {
+          if (_.isFunction(cancelCallback)) {
+            cancelCallback()
+          }
+        }
+      })
+    }
+  }
+
   static showAlertToast (message, destroyFunc) {
     swal.fire({
       icon: 'info',
@@ -32,6 +62,23 @@ class Alerts {
       position: 'bottom-end',
       showConfirmButton: false,
       didDestroy: destroyFunc
+    })
+  }
+
+  static showSuggestedAnswers (message, callback, destroyFunc) {
+    swal.fire({
+      icon: 'info',
+      text: message,
+      toast: true,
+      position: 'bottom-end',
+      showConfirmButton: true,
+      didDestroy: destroyFunc
+    }).then((result) => {
+      if (result.value) {
+        if (_.isFunction(callback)) {
+          callback(null, result.value)
+        }
+      }
     })
   }
 

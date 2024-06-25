@@ -17,9 +17,9 @@ class ParameterManager {
             } else {
               if (parameters) {
                 let parsedParameters = JSON.parse(parameters)
-                sendResponse({parameters: parsedParameters || { followUpQuestion: true, userProvidedAnswer: true, suggestQuestionsByLLM: true, showSource: true }})
+                sendResponse({parameters: parsedParameters || { followUpQuestion: true, userProvidedAnswer: true, suggestQuestionsByLLM: true, suggestItemsByLogs: true, showSource: true, allowSystemLogging: true, systemSuggestedItems: 3, llmSuggestedItems: 3 }})
               } else {
-                sendResponse({parameters: { followUpQuestion: true, userProvidedAnswer: true, suggestQuestionsByLLM: true, showSource: true }})
+                sendResponse({parameters: { followUpQuestion: true, userProvidedAnswer: true, suggestQuestionsByLLM: true, suggestItemsByLogs: true, showSource: true, allowSystemLogging: true, systemSuggestedItems: 3, llmSuggestedItems: 3 }})
               }
             }
           })

@@ -247,12 +247,30 @@ class ModelConfiguration {
       parameters.suggestQuestionsByLLM = suggestQuestionsByLLM.checked
       this.updateParameters(parameters)
     })
-    /* const showSource = document.getElementById('showSource')
-    showSource.checked = parameters.showSource
-    showSource.addEventListener('change', () => {
-      parameters.showSource = showSource.checked
+    const suggestItemsByLogs = document.getElementById('suggestItemsByLogs')
+    suggestItemsByLogs.checked = parameters.suggestItemsByLogs
+    suggestItemsByLogs.addEventListener('change', () => {
+      parameters.suggestItemsByLogs = suggestItemsByLogs.checked
       this.updateParameters(parameters)
-    }) */
+    })
+    const allowSystemLogging = document.getElementById('allowSystemLogging')
+    allowSystemLogging.checked = parameters.allowSystemLogging
+    allowSystemLogging.addEventListener('change', () => {
+      parameters.allowSystemLogging = allowSystemLogging.checked
+      this.updateParameters(parameters)
+    })
+    const systemSuggestedItems = document.getElementById('systemSuggestedItems')
+    systemSuggestedItems.value = parameters.systemSuggestedItems
+    systemSuggestedItems.addEventListener('change', () => {
+      parameters.systemSuggestedItems = systemSuggestedItems.value
+      this.updateParameters(parameters)
+    })
+    const llmSuggestedItems = document.getElementById('llmSuggestedItems')
+    llmSuggestedItems.value = parameters.llmSuggestedItems
+    llmSuggestedItems.addEventListener('change', () => {
+      parameters.llmSuggestedItems = llmSuggestedItems.value
+      this.updateParameters(parameters)
+    })
   }
 
   findAvailableId (models) {

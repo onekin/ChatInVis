@@ -3,7 +3,7 @@ const ModelDefaultValues = require('./ModelDefaultValues')
 class PromptBuilder {
   // PROMPT FOR LLM BASED QUESTION
   static getPromptForLLMAnswers (that, question) {
-    let numberOfItems = this.getNumberOfItems(that)
+    let numberOfItems = this.getNumberOfLLMItems(that)
     let description = this.getDescription(that)
     let prompt = question + 'Please provide ' + numberOfItems + ' items with descriptions that ' + description
     prompt += ' You have to provide the response in JSON format including each item in an array. The format should be as follows:'
@@ -24,7 +24,7 @@ class PromptBuilder {
   }
   // PROMPT FOR PDF BASED QUESTION
   static getPromptForPDFAnswers (that, question) {
-    let numberOfItems = this.getNumberOfItems(that)
+    let numberOfItems = this.getNumberOfLLMItems(that)
     let description = this.getDescription(that)
     let prompt = 'Based on the provided pdf, ' + question + 'Please provide ' + numberOfItems + ' items with descriptions that ' + description
     prompt += ' You have to provide the response in JSON format including each item in an array. The JSON should list a text excerpt of the provided PDF that supports each answer and has made you to reach the answer. The format should be as follows:'
@@ -153,8 +153,29 @@ class PromptBuilder {
     prompt += '\n]\n' + '}'
     return prompt
   }
+  static getPromptForLogsSuggestedQuestions (that, answerNodeLabel, answerNodeNote, previousQuestionNodeLabel, firsQuestion, logs) {
+    let numberOfItems = this.getNumberOfLogItems(that)
+    let prompt = 'Exploring this first question: ' + firsQuestion + ', I have later ask: ' + previousQuestionNodeLabel + '. The answer for this question was ' + answerNodeLabel + ' which means ' + answerNodeNote + '.\n'
+    prompt += ' You have to suggest me more ' + numberOfItems + ' following up QUESTIONS in JSON format including each item in an array. You have to provide me the questions from the following log of previous questions, to do that, from the "answer" field of the log, find the more similars to "' + answerNodeLabel + '" and then include the "question" field in your answer. The format should be as follows:'
+    prompt += '{\n' + '"items": ['
+    for (let i = 0; i < numberOfItems; i++) {
+      if (i === 0) {
+        prompt += '{"GPT_item_name":"question from the log as it is in the log element",' +
+          '"description": "mention for what answer was used the question",' +
+          '}'
+      } else {
+        prompt += ',{"GPT_item_name":"question from the log as it is in the log element",' +
+          '"description": "mention for what answer was used the question",' +
+          '}'
+      }
+    }
+    prompt += '\n]\n' + '}'
+    logs = logs.map(log => log.value)
+    prompt += '\n\nLOGS: ' + JSON.stringify(logs)
+    return prompt
+  }
   static getPromptForLLMSuggestedQuestions (that, answerNodeLabel, answerNodeNote, previousQuestionNodeLabel, firsQuestion) {
-    let numberOfItems = this.getNumberOfItems(that)
+    let numberOfItems = this.getNumberOfLLMItems(that)
     let description = this.getDescription(that)
     let prompt = 'Exploring this first question: ' + firsQuestion + ', I have later ask: ' + previousQuestionNodeLabel + '. The answer for this question was ' + answerNodeLabel + ' which means ' + answerNodeNote + '.\n'
     prompt += ' You have to suggest me more ' + numberOfItems + ' following up QUESTIONS in JSON format including each item in an array. The format should be as follows:'
@@ -173,27 +194,14 @@ class PromptBuilder {
     prompt += '\n]\n' + '}'
     return prompt
   }
-  static getNumberOfItems (that) {
-    let style = that._styles
-    let numberOfItems
-    let numberOfItemsElement = style.find((s) => { return s.name === 'Number of items' })
-    if (ModelDefaultValues.NumberOfItems.initial === numberOfItemsElement.value) {
-      numberOfItems = ModelDefaultValues.NumberOfItems.default
-    } else {
-      numberOfItems = numberOfItemsElement.value
-    }
-    return numberOfItems
+  static getNumberOfLLMItems (that) {
+    return that._styles.llmSuggestedItems || ModelDefaultValues.NumberOfItems.default
+  }
+  static getNumberOfLogItems (that) {
+    return that._styles.systemSuggestedItems || ModelDefaultValues.NumberOfItems.default
   }
   static getDescription (that) {
-    let style = that._styles
-    let description
-    let descriptionElement = style.find((s) => { return s.name === 'Description' })
-    if (ModelDefaultValues.Description.initial === descriptionElement.value) {
-      description = ModelDefaultValues.Description.default
-    } else {
-      description = descriptionElement.value
-    }
-    return description
+    return ModelDefaultValues.Description.default
   }
 }
 
