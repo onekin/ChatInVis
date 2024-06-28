@@ -70,7 +70,7 @@ class HomePageManager {
         e.stopPropagation()
         that.importTemplate('chatin')
       }, false)
-      chatinTemplateInsertionPoint.insertBefore(chatinTemplate, chatinTemplateInsertionPoint.children[1])
+      templateElementToClone.parentNode.insertBefore(chatinTemplate, templateElementToClone)
     }
     let obs = new MutationObserver(function (mutations) {
       observerFunc()

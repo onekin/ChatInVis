@@ -537,10 +537,14 @@ class MindmeisterBackground {
       changeList.images.forEach(i => {
         // eslint-disable-next-line promise/param-names
         promiseList.push(new Promise((res, rej) => {
-          that.uploadImage(mapId, i).then(imageId => {
-            changeList.setImageId(i.mindmeisterName, imageId)
-            res()
-          })
+          try {
+            that.uploadImage(mapId, i).then(imageId => {
+              changeList.setImageId(i.mindmeisterName, imageId)
+              res()
+            })
+          } catch (e) {
+            reject(e)
+          }
         }))
       })
       if (promiseList.length === 0) {

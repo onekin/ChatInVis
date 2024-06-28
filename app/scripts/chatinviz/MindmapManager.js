@@ -852,7 +852,7 @@ class MindmapManager {
               gptItemsNodes = gptItemsNodes.map((c) => {
                 return {
                   text: c.label,
-                  style: PromptStyles.SystemQuestionItem,
+                  style: PromptStyles.SystemLogQuestionItem,
                   image: IconsMap['question'],
                   parentId: nodeId,
                   note: c.description + '\n\n<b>Source:SystemLog</b>'
@@ -1106,7 +1106,7 @@ class MindmapManager {
     return new Promise((resolve, reject) => {
       MindmeisterClient.getMap(that._mapId).then((mapInfo) => {
         MindmeisterClient.getUserId().then((user) => {
-          console.log(user)
+          // console.log(user)
           that._user = user
           that._mindmapParser = new MindmapContentParser(mapInfo)
           let rootNode = that.getRootNode()
@@ -1195,10 +1195,7 @@ class MindmapManager {
       targetElement = document.querySelector(`div[style*='${modifiedTransform}']`)
 
       if (targetElement) {
-        console.log('Element found with modified transform values:', targetElement)
         return targetElement
-      } else {
-        console.log('No element found with the specified transform values.')
       }
     } else {
       console.log('Original element with specified transform values not found.')
@@ -1267,7 +1264,7 @@ class MindmapManager {
         }
       })
       if (answersNodes.length > 0) {
-        Alerts.showSuggestedAnswers(answersNodes.map((n) => n.text).join('\n') + ' has been previously selected', () => {
+        Alerts.showSuggestedAnswers(answersNodes.map((n) => n.text).join('\n') + ' has been previously considered', () => {
           if (feedbackNodes.length > 0) {
             let recommended = feedbackNodes.filter((f) => f.value.ratingValue === '3')
             let veryRecommended = feedbackNodes.filter((f) => f.value.ratingValue === '4')

@@ -3,8 +3,11 @@ class MindmeisterClient {
   static processInBackground (method, args) {
     return new Promise((resolve, reject) => {
       chrome.runtime.sendMessage({scope: 'mindmeisterClient', action: 'processInBackground', method: method, args: args}, (response) => {
-        if (response.response != null) resolve(response.response)
-        else if (response.error != null) reject(response.error)
+        if (response.response != null) {
+          resolve(response.response)
+        } else if (response.error != null) {
+          reject(response.error)
+        }
       })
     })
   }
@@ -27,8 +30,11 @@ class MindmeisterClient {
   static getUserId () {
     return new Promise((resolve, reject) => {
       chrome.runtime.sendMessage({scope: 'mindmeisterClient', action: 'getUserId'}, (response) => {
-        if (response.response != null) resolve(response.response)
-        else if (response.error != null) reject(response.error)
+        if (response.response != null) {
+          resolve(response.response)
+        } else if (response.error != null) {
+          reject(response.error)
+        }
       })
     })
   }
