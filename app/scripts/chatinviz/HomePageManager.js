@@ -46,15 +46,15 @@ class HomePageManager {
     let locator = Locators.NEW_MINDMAP_BUTTON
     let target = document.querySelector(locator)
     let observerFunc = () => {
-      let insertedTeplate = document.querySelector(Locators.CHATIN_MINDMAP_TEMPLATE)
+      let insertedTeplate = document.querySelector('#chatinTemplate')
       if (insertedTeplate != null) return
       let chatinTemplateInsertionPoint = document.querySelector(Locators.TEMPLATE_BUTTON_INSERTION_POINT)
       if (chatinTemplateInsertionPoint == null) return
       let templateElementToClone = document.querySelector(Locators.TEMPLATE_ELEMENT_TO_CLONE)
       let chatinTemplate = templateElementToClone.cloneNode(true)
       chatinTemplate.id = 'chatinTemplate'
-      chatinTemplate.classList.add('chatinTemplate')
-      chatinTemplate.querySelector(Locators.MINDMAP_TEMPLATE_NAME).innerText = 'ChatinViz'
+      chatinTemplate.querySelector(Locators.MINDMAP_TEMPLATE_NAME).innerText = 'ChatInVis'
+      // chatinTemplate.style.width = '50px'
       let templateImage = chatinTemplate.querySelector('svg')
       let templateImageContainer = templateImage.parentNode
       templateImageContainer.removeChild(templateImage)
