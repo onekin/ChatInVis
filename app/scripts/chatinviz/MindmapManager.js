@@ -84,15 +84,17 @@ class MindmapManager {
       })
       if (newNodes) {
         this.addConfigurationButton()
-        that.addQuestionClickManager()
-        that.addAnswerClickManager()
-        that.addUserAnnotations(this._mapId)
+        this.addReportButton(that)
+        this.addQuestionClickManager()
+        this.addAnswerClickManager()
+        this.addUserAnnotations(this._mapId)
       }
     })
     let config = { childList: true, subtree: true }
     obs.observe(parent, config)
     // obs.observe(document, config)
     this.addConfigurationButton()
+    this.addReportButton(that)
     this.addQuestionClickManager()
     this.addAnswerClickManager()
     this.addUserAnnotations(this._mapId)
@@ -110,6 +112,25 @@ class MindmapManager {
       clone.addEventListener('click', function (event) {
         event.stopPropagation()
         window.open(chrome.runtime.getURL('/pages/modelConfiguration.html'), '_blank')
+      })
+      // Insert the cloned button before the original button
+      button.parentNode.insertBefore(clone, button)
+    }
+  }
+  addReportButton (that) {
+    let reportButton = document.querySelector('.chatin-report-button')
+    if (reportButton == null) {
+      let button = document.querySelector('.topRightToolbar-btnShare')
+
+      // Clone the button element
+      let clone = button.cloneNode(true)
+      clone.querySelector('.kr-text[data-test-id="icon-text-button-text"]').textContent = 'Report'
+      // Check if the button exists and has the expected text
+      clone.className = 'chatin-report-button'
+      clone.addEventListener('click', function (event) {
+        event.stopPropagation()
+        // window.open(chrome.runtime.getURL('/pages/modelConfiguration.html'), '_blank')
+        that.exportReport()
       })
       // Insert the cloned button before the original button
       button.parentNode.insertBefore(clone, button)
@@ -629,7 +650,12 @@ class MindmapManager {
                   let callback = (json) => {
                     Alerts.closeLoadingWindow()
                     console.log(json)
-                    const gptItemsNodes = that.parseChatGPTAnswerFromAggregation(json)
+                    let gptItemsNodes
+                    if (type === 'question') {
+                      gptItemsNodes = that.parseChatGPTAnswerFromAggregation(json)
+                    } else if (type === 'answer') {
+                      gptItemsNodes = that.parseChatGPTQuestionFromAggregation(json)
+                    }
                     if (gptItemsNodes === null || gptItemsNodes.length === 0) {
                       Alerts.showErrorToast(`There was an error parsing ChatGPT's answer. Check browser console to see the whole answer.`)
                     }
@@ -932,6 +958,22 @@ class MindmapManager {
     return gptItemsNodes
   }
   parseChatGPTAnswerFromAggregation (json) {
+    let clusters
+    clusters = Array.from(Object.values(json)[0]).filter(item =>
+      Object.keys(item).some(key => key.startsWith('cluster_name'))
+    )
+    let clusterNodes = []
+    clusters.forEach((item) => {
+      let name = Utils.findValuesEndingWithName(item, 'name')
+      let description = item.description + '\n'
+      Array.from(item.clusteredItems).forEach((clusteredItem) => {
+        description += '<br><strong>' + clusteredItem.node_name + '</strong>: ' + clusteredItem.description + '<br>'
+      })
+      clusterNodes.push({ label: name, description: description })
+    })
+    return clusterNodes
+  }
+  parseChatGPTQuestionFromAggregation (json) {
     let clusters
     clusters = Array.from(Object.values(json)[0]).filter(item =>
       Object.keys(item).some(key => key.startsWith('cluster_name'))
@@ -1314,6 +1356,38 @@ class MindmapManager {
       }
     })
   }
+  exportReport () {
+    let id = this.getRootNodeID()
+    chrome.runtime.sendMessage({ scope: 'logManager', cmd: 'getLogsFromMap', data: {mapID: id} }, (data) => {
+      console.log('All Logs:', data.logs)
+      const textData = this.convertToReport(data.logs)
+      this.downloadText(textData, 'report.txt')
+    })
+  }
+  // Function to downloadText
+  convertToReport (logs) {
+    let textData = ''
+    logs.forEach((log) => {
+      textData += 'Timestamp: ' + new Date(log.timestamp).toLocaleString() + '\n'
+      textData += 'Action: ' + log.action + '\n'
+      textData += 'Source: ' + log.source + '\n'
+      textData += 'Value: ' + JSON.stringify(log.value) + '\n'
+      textData += '\n\n'
+    })
+    return textData
+  }
+  // Function to download CSV
+  downloadText (data, filename) {
+    const blob = new Blob([data], { type: 'text/txt' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.setAttribute('hidden', '')
+    a.setAttribute('href', url)
+    a.setAttribute('download', filename)
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  }
   initManagers (that) {
     const checkDOM = setInterval(function () {
       // Options for the observer (which mutations to observe)
@@ -1355,7 +1429,8 @@ class MindmapManager {
                         mapId: that._mapId,
                         nodeID: currentNode.dataset.id,
                         user: that._user.id,
-                        value: { textValue: currentNode.textContent }
+                        value: { textValue: currentNode.textContent },
+                        timestamp: Date.now()
                       }
                       that.pushLog(log, that)
                     })

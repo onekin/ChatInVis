@@ -84,6 +84,30 @@ class LogManager {
               }
             }
           })
+        } else if (request.cmd === 'getLogsFromMap') {
+          let searchKey = 'db.logs'
+          let mapID = request.data.mapID
+          ChromeStorage.getData(searchKey, ChromeStorage.local, (err, logs) => {
+            if (err) {
+              sendResponse({ err: err })
+            } else {
+              if (logs) {
+                try {
+                  logs = JSON.parse(logs)
+                  // Filter logs to find initial matches and store their nodeIDs
+                  // Define the primary actions to filter initially
+                  let filteredLogs = logs.filter(log => log.mapId === mapID)
+                  // Output the final filtered logs
+                  console.log(filteredLogs)
+                  sendResponse({ logs: filteredLogs || [] })
+                } catch (e) {
+                  sendResponse({ logs: [] })
+                }
+              } else {
+                sendResponse({ logs: [] })
+              }
+            }
+          })
         } else if (request.cmd === 'setLogs') {
           let searchKey = 'db.logs'
           let logs = request.data.logs
