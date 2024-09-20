@@ -1,4 +1,3 @@
-
 const MindmeisterClient = require('../mindmeister/MindmeisterClient')
 const Alerts = require('../utils/Alerts')
 const Locators = require('../mindmeister/wrapper/Locators')
@@ -53,14 +52,8 @@ class HomePageManager {
       let templateElementToClone = document.querySelector(Locators.TEMPLATE_ELEMENT_TO_CLONE)
       let chatinTemplate = templateElementToClone.cloneNode(true)
       chatinTemplate.id = 'chatinTemplate'
-<<<<<<< Updated upstream
       chatinTemplate.querySelector(Locators.MINDMAP_TEMPLATE_NAME).innerText = 'ChatInVis'
       // chatinTemplate.style.width = '50px'
-=======
-      chatinTemplate.classList.add('chatinTemplate')
-      chatinTemplate.style.width = '20%'
-      chatinTemplate.querySelector(Locators.MINDMAP_TEMPLATE_NAME).innerText = 'ChatinVis'
->>>>>>> Stashed changes
       let templateImage = chatinTemplate.querySelector('svg')
       let templateImageContainer = templateImage.parentNode
       templateImageContainer.removeChild(templateImage)
@@ -97,7 +90,7 @@ class HomePageManager {
       let chatinTemplateLocator = Locators.CHATIN_MINDMAP_TEMPLATE
       let templates = document.querySelectorAll(chatinTemplateLocator)
       templates.forEach((template) => {
-        template.style.width = '%20'
+        template.style.width = referenceTemplate.style.width
       })
     }
     window.setInterval(sizeCheck, 100)
