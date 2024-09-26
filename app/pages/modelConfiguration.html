@@ -125,15 +125,15 @@
     <div class="content">
         <h2>Options</h2>
         <ul>
-            <li><label><input id="followUpQuestion" type="checkbox" class="checkbox"> Follow up question</label></li>
-            <li><label><input id="userProvidedAnswer" type="checkbox" class="checkbox"> User provided answer</label></li>
-            <li><label><input id="suggestQuestionsByLLM" type="checkbox" class="checkbox"> Suggest items by LLM</label></li>
+            <li><label><input id="followUpQuestion" type="checkbox" class="checkbox"> User follow-up question node</label></li>
+            <li><label><input id="userProvidedAnswer" type="checkbox" class="checkbox"> User node for answer</label></li>
+            <li><label><input id="suggestQuestionsByLLM" type="checkbox" class="checkbox"> LLM generated questions</label></li>
             <li><label><input id="allowSystemLogging" type="checkbox" class="checkbox"> Allow system logging</label></li>
-            <li><label><input id="suggestItemsByLogs" type="checkbox" class="checkbox"> Suggest items by Logs</label></li>
+            <li><label><input id="suggestItemsByLogs" type="checkbox" class="checkbox"> Suggest questions from logs</label></li>
 
-            <li><label>LLM suggested items: <input id="llmSuggestedItems" type="number" class="number-input" min="0" max="10" value="0"></label></li>
+            <li><label>LLM provided answer: <input id="llmSuggestedItems" type="number" class="number-input" min="0" max="10" value="0"></label></li>
 
-            <li><label>System suggested items: <input id="systemSuggestedItems" type="number" class="number-input" min="0" max="10" value="0"></label></li>
+            <li><label>Questions suggested from logs items: <input id="systemSuggestedItems" type="number" class="number-input" min="0" max="10" value="0"></label></li>
             <!-- <li><label><input id="showSource" type="checkbox" class="checkbox"> Show source of question</label></li> -->
         </ul>
     </div>

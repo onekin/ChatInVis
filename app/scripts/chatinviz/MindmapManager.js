@@ -124,7 +124,7 @@ class MindmapManager {
 
       // Clone the button element
       let clone = button.cloneNode(true)
-      clone.querySelector('.kr-text[data-test-id="icon-text-button-text"]').textContent = 'Report'
+      clone.querySelector('.kr-text[data-test-id="icon-text-button-text"]').textContent = 'Generate Report'
       // Check if the button exists and has the expected text
       clone.className = 'chatin-report-button'
       clone.addEventListener('click', function (event) {
@@ -316,7 +316,7 @@ class MindmapManager {
         // ADD USER FEEDBACK BUTTON
         let userFeedbackButton = div.cloneNode(true)
         // Optionally, you can change the content or attributes of the duplicate
-        userFeedbackButton.textContent = 'UserFeedback'
+        userFeedbackButton.textContent = 'Set user record'
         userFeedbackButton.style = 'width: 100%; margin-bottom: 10px; padding-top: 7px; padding-bottom: 7px; flex-direction: column; align-items: center; justify-content: center; border-radius: 10px; background-color: rgba(0, 0, 0, 0.05); cursor: pointer; transform: scaleX(1) scaleY(1);'
         // Insert the duplicate after the original div
         div.parentNode.insertBefore(userFeedbackButton, div.nextSibling)
@@ -346,7 +346,7 @@ class MindmapManager {
    */
   addQuestionClickManager () {
     let that = this
-    let questionNodes = MindmapWrapper.getNodesByIcon('question')
+    let questionNodes = MindmapWrapper.getNodesByIcon('question').concat(MindmapWrapper.getNodesByIcon('interrobang'))
     // let allCloudNodes = that.getCloudNodes(that)
     // let questionNodes = allQuestionNodes.filter((n) => { return !CheckMapUtils.nodeElementHasCloudShape(n) })
     // let systemNodes = allQuestionNodes.filter((n) => { return CheckMapUtils.nodeElementHasCloudShape(n) })
@@ -633,7 +633,7 @@ class MindmapManager {
               let answer = node.text + ' which means that ' + node._info.note.replace(/EXCERPT FROM[\s\S]*/, '')
               prompt = PromptBuilder.getPromptForSummarizationQuestions(answer, childrenNodes, number)
               style = PromptStyles.SystemQuestionItem
-              icon = IconsMap['question']
+              icon = IconsMap['interrobang']
             } else if (type === 'question') {
               prompt = PromptBuilder.getPromptForSummarizationAnswers(node.text, childrenNodes, number)
               style = PromptStyles.SystemAnswerItem
@@ -917,7 +917,7 @@ class MindmapManager {
               gptItemsNodes = gptItemsNodes.map((c) => {
                 return {
                   text: c.label,
-                  style: PromptStyles.SystemQuestionItem,
+                  style: PromptStyles.SystemModelQuestionItem,
                   image: IconsMap['question'],
                   parentId: nodeId,
                   note: c.description + '\n\n<b>Source:Model:' + modelName + '</b>'
@@ -994,7 +994,7 @@ class MindmapManager {
    */
   addAnswerClickManager () {
     let that = this
-    let answerNodes = MindmapWrapper.getNodesByIcon('magnifier')
+    let answerNodes = MindmapWrapper.getNodesByIcon('magnifier').concat(MindmapWrapper.getNodesByIcon('abcd'))
     answerNodes.forEach((n) => {
       let iconElement = n.getIconElement()
       if (iconElement == null || iconElement.classList.contains('chatin_answer')) return

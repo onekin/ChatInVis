@@ -33,7 +33,7 @@ class ContentScript {
         if (homepageUrlPattern.test(window.location.href) && chatinIcon === null) this._homepageManager.init()
       }, 2000)
     }, () => {
-      Alerts.showErrorToast('Chatin requires that you authorize it to interact with your Mindmeister account')
+      Alerts.showErrorToast('Chatin requires that you authorize it to interact with your Mindmeister account. Please, access the extension Options page an authorize it.')
     })
   }
 }

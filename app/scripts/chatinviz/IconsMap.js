@@ -19,6 +19,10 @@ const IconsMap = {
   'abcd': {
     fileUrl: chrome.runtime.getURL('images/question.png'),
     mindmeisterName: ':abcd:'
+  },
+  'interrobang': {
+    fileUrl: chrome.runtime.getURL('images/question.png'),
+    mindmeisterName: ':interrobang:'
   }
 }
 
