@@ -1,4 +1,4 @@
-# CHATIN
+# CHATINVIS
 Chatin is a browser extension that brings the power of Large Language Models (LLMs) to MindMeister, making problem analysis easier and more intuitive. Understanding a problem isn't just about recognizing a gap; it's about exploring that gap from what you initially perceive to what you eventually aim to solve. This journey, known as 'problem scoping,' involves hypothesizing, testing, and evolving your understanding based on observations.
 
 Traditional methods like literature reviews are thorough but time-consuming. Chatin offers a swift alternative, leveraging LLMs to provide immediate, relevant insights directly into your MindMeister maps. It's designed for those initial stages of problem-solving where quick, informed guidance can pivot your direction towards more effective solutions.
